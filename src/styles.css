@@ -3114,7 +3114,7 @@ tbody tr:hover {
   border-radius: 10px;
 }
 .access-card .brand {
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
 }
 .access-card .brand img {
