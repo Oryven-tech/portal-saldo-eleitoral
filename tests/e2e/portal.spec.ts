@@ -38,6 +38,22 @@ test('entrada responsiva, demonstração identificada e sem erro de acessibilida
   await mkdir('.artifacts', { recursive: true });
   await page.screenshot({ path: `.artifacts/entrada-${info.project.name}.png`, fullPage: true });
 });
+test('recusa OAuth aparece na entrada e não expõe texto externo', async ({ page }) => {
+  await page.goto('/?error=access_denied&error_description=texto-externo#error=access_denied');
+  await expect(page.getByRole('alert')).toHaveText('Acesso não autorizado. Procure a direção.');
+  await expect(page.getByRole('heading', { name: 'Entrar', exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.has('error')).toBe(false);
+  await expect(page.getByText('texto-externo', { exact: true })).toHaveCount(0);
+
+  await page.goto('/#error=server_error&error_description=texto-externo');
+  // An external OAuth callback loads a new document; hash navigation alone does not.
+  await page.reload();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Não foi possível concluir o acesso Google. Tente entrar novamente.',
+  );
+  expect(new URL(page.url()).hash).toBe('');
+});
+
 test('direção pesquisa, agenda e encontra a reserva', async ({ page }, info) => {
   await director(page);
   await page.screenshot({ path: `.artifacts/painel-${info.project.name}.png`, fullPage: true });

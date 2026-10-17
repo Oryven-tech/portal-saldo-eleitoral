@@ -2,7 +2,7 @@ import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { z } from 'zod';
 import type { Repository, Snapshot } from './repository';
 import type { Document } from './domain';
-import { backupDataSchema } from './domain';
+import { backupDataSchema } from './domain.ts';
 
 const MAGIC = new TextEncoder().encode('PSEBKP01');
 const ITERATIONS = 600_000;
@@ -164,7 +164,13 @@ export interface BackupSummary {
   parts: number;
   snapshotId: string;
 }
-export async function verifyBackup(files: File[], password: string): Promise<BackupSummary> {
+// The optional sink stages verified PDFs locally; callers must not apply anything
+// to a destination until this entire operation succeeds.
+export async function readBackup(
+  files: ReadonlyArray<Pick<File, 'size' | 'arrayBuffer'>>,
+  password: string,
+  documentSink?: (id: string, bytes: Uint8Array<ArrayBuffer>) => Promise<void>,
+): Promise<{ summary: BackupSummary; snapshot: Snapshot }> {
   if (!files.length || files.length > 100)
     throw new Error('Selecione todas as partes do mesmo backup, até 100 arquivos.');
   let expected: z.infer<typeof manifestSchema> | null = null;
@@ -231,6 +237,7 @@ export async function verifyBackup(files: File[], password: string): Promise<Bac
       totalBytes += bytes.length;
       if (totalBytes > 700_000_000) throw new Error('Backup excede o orçamento suportado.');
       docs.set(doc.id, { hash: doc.hash, size: doc.size });
+      await documentSink?.(doc.id, new Uint8Array(bytes));
     }
   }
   if (
@@ -238,7 +245,8 @@ export async function verifyBackup(files: File[], password: string): Promise<Bac
     parts.size !== expected.parts ||
     [...parts].some((n) => n > expected.parts) ||
     !snapshot ||
-    snapshot.id !== expected.id
+    snapshot.id !== expected.id ||
+    snapshot.createdAt !== expected.createdAt
   )
     throw new Error('Backup incompleto: faltam partes ou dados.');
   const data = backupDataSchema.parse(snapshot.data);
@@ -255,7 +263,7 @@ export async function verifyBackup(files: File[], password: string): Promise<Bac
     data.documents.some((d) => docs.get(d.id)?.hash !== d.hash || docs.get(d.id)?.size !== d.size)
   )
     throw new Error('Associações de documentos inconsistentes.');
-  return {
+  const summary = {
     schoolName: expected.schoolName,
     createdAt: expected.createdAt,
     staff: data.staff.length,
@@ -263,4 +271,8 @@ export async function verifyBackup(files: File[], password: string): Promise<Bac
     parts: parts.size,
     snapshotId: expected.id,
   };
+  return { summary, snapshot: { id: snapshot.id, createdAt: snapshot.createdAt, data } };
+}
+export async function verifyBackup(files: File[], password: string): Promise<BackupSummary> {
+  return (await readBackup(files, password)).summary;
 }

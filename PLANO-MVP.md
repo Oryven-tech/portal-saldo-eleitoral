@@ -1,8 +1,8 @@
 # Portal Saldo Eleitoral — plano de execução do MVP
 
-Atualizado em 16/10/2026. Referência de continuidade: este plano e a análise de viabilidade no mesmo diretório.
+Atualizado em 17/10/2026. Referência de continuidade: este plano e a análise de viabilidade no mesmo diretório.
 
-Estado: desenvolvimento iniciado em 16/10/2026. Base React/TypeScript, demonstração isolada, adaptador Supabase, migração SQL/RLS e função de upload implementados localmente. Nenhuma conta Supabase/Google foi conectada e nenhuma publicação ou restauração real foi executada. Evidências e limitações em EVIDENCIAS-MVP.md.
+Estado: prévia publicada no Pages, conectada ao Supabase e Google. Fluxos centrais e isolamento de leitura/download entre dois servidores foram ensaiados em serviços reais com dados sintéticos. Recuperação implementada e ensaiada em segundo Supabase, com aceite operacional parcial. Uso institucional ainda não liberado. Evidências e limitações em EVIDENCIAS-MVP.md.
 
 ## 1. Decisões vigentes
 
@@ -403,14 +403,14 @@ Essas pendências não impedem estrutura, modelo proposto e testes sintéticos; 
 | Análise e arquitetura | Concluído | ANALISE-DE-VIABILIDADE.md; escolha expressa neste chat |
 | Plano de execução | Concluído | Este arquivo |
 | Etapa 0 | Parcial | Git local, dependências fixadas, fontes licenciadas e regras sintéticas; dados institucionais e amostras reais pendentes |
-| Etapas 1–4 | Código preparado; aceite real pendente | Telas, adaptador, SQL/RLS e upload escritos; testes locais e de navegador não substituem Supabase real |
-| Etapa 5 | Parcial | Exportação protegida e verificador testados; recuperação em outro projeto ainda não implementada/homologada |
-| Etapas 6–7 | Pendentes | Revisão de celular/desktop local executada; piloto institucional e publicação ainda não realizados |
-| Backup funcional restaurado | Pendente | Pacotes gerados/validados com dados sintéticos; nenhum restore de desastre realizado |
+| Etapas 1–4 | Implementadas; aceite parcial em serviço real | Google, admissão, leitura/download isolados, envio nos dois formatos e gestão de saldo ensaiados; concorrência, retomada e reconciliação pendentes |
+| Etapa 5 | Implementada; aceite operacional parcial | Leitor por partes, comando assistido e transação de recuperação; ensaio com dados/PDF em Supabase isolado; falta transporte completo do comando e volume representativo |
+| Etapas 6–7 | Parcial | Prévia publicada; verificações locais e ensaios hospedados sintéticos; piloto institucional pendente |
+| Backup funcional restaurado | Ensaio sintético hospedado concluído | Dois servidores, crédito, uso/reserva e PDF de 686 bytes recuperados sem duplicação e sem reativar acessos; validação operacional completa pendente |
 | Uso oficial | Não liberado | Depende de aceite funcional, segurança, recuperação e regras |
 
 Atualização de 16/10/2026: login Google real dos dois perfis, upload nos dois formatos previstos, download privado com conferência dos bytes, aprovação, solicitação de correção, reserva e cancelamento validados no Supabase dedicado com dados sintéticos. Saldo final do ensaio: 2 disponíveis e 0 reservados. Não encerra o gate de isolamento completo nem recuperação. Prévia publicada após autorização final em https://portalsaldoeleitoral.pages.dev, na conta Cloudflare com login independente do PSE. Site URL e origem de upload atualizadas; login do servidor, envio e download também passaram em HTTPS. Ver EVIDENCIAS-MVP.md para pacote, testes e limitações atuais.
 
 Ao concluir cada etapa, registrar versão/commit, ambiente, comandos e testes executados, resultado, limitações, rollback e próxima etapa. Não registrar segredos nem dados pessoais reais nas evidências versionadas.
 
-Continuação: escola identificada como Escola Estadual Edson Alves Pereira. Projeto Free dedicado em São Paulo criado pelo responsável; migração aplicada, administrador inicial confirmado, hook ativo e função de upload publicada. Diretora definitiva e política institucional pendentes. Interface simplificada para três seções da direção. Google OAuth e configuração pública local concluídos; primeiro login real da direção confirmado. Validação JWT adaptada a ECC com autorização explícita e recusa real de token inválido confirmada. Próxima ação: validar contas de servidores, isolamento real, upload e recuperação; preparar publicação no Pages antes de liberar dados reais. Testes locais usam dados fictícios. Ver EVIDENCIAS-MVP.md para resultados e limitações.
+Continuação de 17/10/2026: recuperação assistida implementada e ensaiada no projeto Free separado `PSE Homologacao`. A base da prévia não foi restaurada nem sobrescrita. Terceira conta Google bloqueada antes da autorização e liberada depois da confirmação do responsável. Leitura/download cruzados entre os dois servidores, RPC administrativa por servidor e acesso anônimo recusados pela API hospedada. Mensagem de recusa OAuth corrigida na entrada. Diretora definitiva e política institucional pendentes. Próximas verificações: transporte completo da recuperação, concorrência, retomada e reconciliação de uploads, correção de folgas já usufruídas e troca de identidade. Ver RECUPERACAO.md e EVIDENCIAS-MVP.md para limites, comandos e resultados.

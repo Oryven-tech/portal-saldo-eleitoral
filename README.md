@@ -2,7 +2,7 @@
 
 MVP em desenvolvimento para uma escola, com Google Auth, Supabase Postgres/Storage privado e prévia no Cloudflare Pages: https://portalsaldoeleitoral.pages.dev.
 
-**Situação atual:** prévia conectada ao Supabase e Google, publicada em conta Cloudflare com login independente do PSE. Login dos dois perfis, upload e download privados, aprovação e reserva/cancelamento passaram com dados sintéticos. Uso oficial ainda não liberado: faltam recuperação de desastre, isolamento completo e aceite institucional. Não inserir dados pessoais reais nesta homologação.
+**Situação atual:** prévia conectada ao Supabase e Google, publicada em conta Cloudflare com login independente do PSE. Login dos dois perfis, upload e download privados, aprovação e reserva/cancelamento passaram com dados sintéticos. Leitura e download cruzados entre dois servidores com Google real foram recusados pela API; conta não autorizada também foi bloqueada. Recuperação assistida implementada e ensaiada em segundo Supabase com dados/PDF sintéticos. Uso oficial ainda não liberado: faltam validação operacional completa da recuperação, concorrência/reconciliação e aceite institucional. Não inserir dados pessoais reais nesta homologação.
 
 ## Executar
 
@@ -85,13 +85,13 @@ O manifesto inclui hashes SHA-256, contagens e associações. A verificação re
 
 Manter duas cópias protegidas, com recuperação separada. Backup de banco não contém PDFs. Exportar tudo a cada alteração pode esgotar egress; planejar frequência conforme o tamanho observado.
 
-**Restauração em outro projeto ainda não está implementada nem homologada.** O validador e o pacote são a base; a etapa de recuperação assistida precisa reconstruir esquema, objetos, relacionamentos e vínculos Google em homologação antes de uso real. Não tratar download/validação como prova de recuperação completa. Backups não contêm senhas, chaves ou sessões. No MVP, Drive recebe cópia manual; integração automática está fora desta etapa.
+**Recuperação assistida implementada para um projeto vazio.** Consulte [RECUPERACAO.md](RECUPERACAO.md): `npm.cmd run recovery -- inspect <pasta>` valida localmente; `apply <pasta> <referencia>` exige confirmação do destino e chave administrativa informada sem exibição no terminal. PDFs são conferidos no destino e os registros são aplicados em uma transação. Servidores ficam com acessos inativos para revisão; papéis, identidades Auth e sessões antigas não são reaplicados. O ensaio hospedado usou painel SQL/Storage e dados sintéticos; o transporte completo do comando com chave administrativa ainda precisa de conferência operacional. No MVP, Drive recebe cópia manual; integração automática está fora desta etapa.
 
 ## Limitações que bloqueiam uso oficial
 
 - Escola e administrador inicial configurados em projeto Free dedicado; política institucional e diretora definitiva ainda pendentes.
-- Google Auth permanece em Testing com duas contas. Isolamento negativo entre dois servidores, conta não autorizada, concorrência e retomada ainda precisam de ensaio hospedado; os fluxos positivos reais já passaram.
-- Restauração assistida, reconciliação/limpeza de uploads e correções de usos já concluídos ainda pendentes.
+- Google Auth permanece em Testing com três contas. Recusa de conta não autorizada, leitura/download cruzados entre os dois servidores, RPC administrativa por servidor e acesso anônimo foram conferidos na API hospedada. Concorrência, retomada e demais testes adversariais de upload continuam pendentes; estes resultados não encerram toda a matriz de segurança.
+- Recuperação assistida já ensaiada em banco hospedado com PDF idêntico ao original; faltam o ensaio completo do comando administrativo e volume representativo. Reconciliação/limpeza de uploads e correções de usos já concluídos ainda pendentes.
 - Calendário, fracionamento, campos obrigatórios, privacidade/base legal e temporalidade exigem validação institucional.
 - Pausa por pouca atividade é aceita e precisa de responsável por reativação; não há SLA contratado.
 - Testes em navegadores reais adicionais (Safari/iOS) e volume real de até 50 pessoas ainda pendentes.
@@ -102,9 +102,9 @@ Durante desenvolvimento, reverter código por Git sem apagar alterações não s
 
 O `PLANO-MVP.md` registra o andamento e os próximos gates. `EVIDENCIAS-MVP.md` reúne verificações e limites efetivamente observados.
 
-## Estado da integração em 16/10/2026
+## Estado da integração em 17/10/2026
 
-Projeto dedicado Free em São Paulo (`axdooojqsfmjkwzugdxw`), migração aplicada, bucket privado, bootstrap administrativo confirmado e hook de admissão ativo. E-mail/senha desativado. URL/chave publicável configuradas em .env.local ignorado pelo Git. Google OAuth ativo e primeiro login real da direção confirmado; testes entre servidores e aceite de uso oficial ainda pendentes. Não reaplicar a migração inicial nesse banco. Permissões padrão de novos objetos foram restringidas mesmo tendo sido criado com exposição automática marcada.
+Projeto dedicado Free em São Paulo (`axdooojqsfmjkwzugdxw`), migração aplicada, bucket privado, bootstrap administrativo confirmado e hook de admissão ativo. E-mail/senha desativado. URL/chave publicável configuradas em .env.local ignorado pelo Git. Google OAuth ativo para direção e dois servidores de teste, com isolamento de leitura/download conferido. Aceite de uso oficial ainda pendente. Não reaplicar a migração inicial nesse banco. Permissões padrão de novos objetos foram restringidas mesmo tendo sido criado com exposição automática marcada.
 
 Prévia Pages publicada após autorização em https://portalsaldoeleitoral.pages.dev, implantação `0ad2d16a-2a7c-40fa-b4eb-306797291224`. Site URL e PORTAL_ORIGIN apontam para essa origem exata. Login da direção e do servidor, envio e download privado conferidos em HTTPS. Ao desenvolver localmente, não presumir que o upload local está autorizado: alterar a origem hospedada exige planejamento para não interromper a prévia. A lista de retornos não usa curingas.
 

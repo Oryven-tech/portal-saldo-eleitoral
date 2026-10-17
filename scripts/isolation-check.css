@@ -1,0 +1,36 @@
+body {
+  background: #f6f5f0;
+  color: #243d35;
+  font:
+    16px/1.6 system-ui,
+    sans-serif;
+  margin: 0;
+}
+main {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 24px;
+}
+button {
+  background: white;
+  color: inherit;
+  border: 1px solid #244d40;
+  border-radius: 5px;
+  padding: 12px;
+  margin: 6px 6px 6px 0;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: white;
+  border: 1px solid #d6dbd2;
+  padding: 20px;
+}
+a {
+  color: inherit;
+}

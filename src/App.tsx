@@ -39,6 +39,7 @@ import { createDemoRepository } from './demo';
 import { exportBackup, saveBlob, verifyBackup } from './backup';
 import type { BackupSummary } from './backup';
 import { SCHOOL_NAME } from './school';
+import { oauthFailure } from './auth-return';
 
 type Page = 'overview' | 'documents' | 'calendar' | 'backup';
 const pages: { id: Page; label: string; icon: LucideIcon }[] = [
@@ -168,8 +169,12 @@ function Modal({
 export function App() {
   const [repo, setRepo] = useState<Repository | null>(null);
   const [checking, setChecking] = useState(!!supabase);
-  const [authError, setAuthError] = useState('');
+  const [authError, setAuthError] = useState(
+    () => oauthFailure(window.location.href)?.message ?? '',
+  );
   useEffect(() => {
+    const failure = oauthFailure(window.location.href);
+    if (failure) window.history.replaceState(window.history.state, '', failure.cleanUrl);
     if (!supabase) return;
     let live = true;
     const {

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ensaio de isolamento — Portal Saldo Eleitoral</title>
+    <link rel="icon" href="/favicon.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Ensaio de isolamento</h1>
+      <p>
+        Uso técnico, somente com os dois servidores fictícios. Nenhuma credencial aparece no
+        relatório.
+      </p>
+      <p><a href="/">Voltar ao portal para trocar de conta</a></p>
+      <button id="prepare">Preparar referências com a direção</button>
+      <button id="verify">Verificar conta atual</button>
+      <button id="clear">Limpar referências locais do ensaio</button>
+      <pre id="result" aria-live="polite">Aguardando execução.</pre>
+    </main>
+    <script type="module" src="./isolation-check.ts"></script>
+  </body>
+</html>
