@@ -4,27 +4,30 @@ import { mkdir } from 'node:fs/promises';
 
 async function director(page: import('@playwright/test').Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Sou da direção' }).click();
-  await page.getByRole('button', { name: 'Explorar como direção' }).click();
-  await expect(page.getByRole('heading', { name: 'Tudo em um só lugar.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Direção' }).click();
+  await page.getByRole('button', { name: 'Testar acesso de direção' }).click();
+  await expect(page.getByRole('heading', { name: 'Servidores' })).toBeVisible();
 }
 async function navigate(page: import('@playwright/test').Page, name: string) {
   const mobile = page.viewportSize()!.width < 601;
   const labels: Record<string, string> = {
-    Folgas: 'Folgas e datas',
-    Backup: 'Relatórios e backup',
     Documentos: 'Comprovantes',
   };
   await page
     .getByRole('navigation', { name: mobile ? 'Navegação no celular' : 'Navegação principal' })
-    .getByRole('button', { name: mobile ? name : (labels[name] ?? name), exact: true })
+    .getByRole('button', { name: labels[name] ?? name, exact: true })
     .click();
 }
 test('entrada responsiva, demonstração identificada e sem erro de acessibilidade', async ({
   page,
 }, info) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Seu tempo, em boas mãos.' })).toBeVisible();
+  await expect(page).toHaveTitle('Portal Saldo Eleitoral');
+  await expect(
+    page.getByText('Escola Estadual Edson Alves Pereira', { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
+  await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -60,24 +63,22 @@ test('direção pesquisa, agenda e encontra a reserva', async ({ page }, info) =
 });
 test('servidor envia PDF e não recebe crédito antes da análise', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Explorar como servidor' }).click();
-  await expect(page.getByRole('heading', { name: 'Olá, Ana.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Testar acesso de servidor' }).click();
+  await expect(page.getByRole('heading', { name: 'Meu saldo' })).toBeVisible();
   const available = page
     .locator('.stat-card')
-    .filter({ hasText: 'Dias disponíveis' })
+    .filter({ hasText: 'Disponíveis' })
     .locator('strong')
     .first();
   const before = await available.innerText();
   await page.getByRole('button', { name: 'Enviar comprovante' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Atividade comprovada').selectOption('Treinamento · 2026');
-  await dialog
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'teste.pdf',
-      mimeType: 'application/pdf',
-      buffer: Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF'),
-    });
+  await dialog.locator('input[type=file]').setInputFiles({
+    name: 'teste.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF'),
+  });
   await dialog.getByLabel('Conferi os dados e anexei os documentos correspondentes.').check();
   await dialog.getByRole('button', { name: 'Enviar para análise' }).click();
   await expect(dialog).not.toBeVisible();
@@ -139,15 +140,37 @@ test('direção corrige crédito preservando compromissos e edita uma data', asy
 });
 test('acessos autorizados funcionam no menu de celular e desktop', async ({ page }) => {
   await director(page);
-  if (page.viewportSize()!.width < 601) {
-    await page.getByRole('button', { name: 'Mais opções' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Acessos', exact: true }).click();
-  } else await navigate(page, 'Acessos');
+  await page.getByRole('button', { name: 'Gerenciar acessos', exact: true }).click();
   await page.getByRole('button', { name: 'Autorizar servidor' }).click();
-  const modal = page.getByRole('dialog');
+  const modal = page.getByRole('dialog', { name: 'Autorizar servidor', exact: true });
   await modal.getByLabel('Nome do servidor').fill('Servidor de teste');
   await modal.getByLabel('E-mail da conta Google').fill('teste@example.com');
   await modal.getByRole('button', { name: 'Autorizar acesso', exact: true }).click();
   await expect(modal).not.toBeVisible();
   await expect(page.getByText('teste@example.com')).toBeVisible();
+});
+
+test('direção usa três seções e analisa comprovante dentro da ficha', async ({ page }) => {
+  await director(page);
+  const mobile = page.viewportSize()!.width < 601;
+  const nav = page.getByRole('navigation', {
+    name: mobile ? 'Navegação no celular' : 'Navegação principal',
+  });
+  await expect(nav.getByRole('button')).toHaveText(['Servidores', 'Folgas', 'Backup']);
+  await expect(
+    page.getByText(
+      /organizar hoje|clareza para todos|ajuda e orientações|cuidado em cada registro/i,
+    ),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: /Comprovantes pendentes/ }).click();
+  await page.getByRole('button', { name: 'Ver ficha de Ana Oliveira', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Analisar comprovantes' }).click();
+  const review = page.getByRole('dialog', { name: 'Analisar comprovantes', exact: true });
+  await review.getByLabel('Justificativa da decisão').fill('Conferência de dados fictícios');
+  await review.getByLabel('Conferi os documentos e a quantidade de dias.').check();
+  await review.getByRole('button', { name: 'Aprovar crédito' }).click();
+  await expect(review).not.toBeVisible();
+  await expect(page.getByRole('button', { name: /Comprovantes pendentes/ })).toHaveText(
+    'Comprovantes pendentes (2)',
+  );
 });

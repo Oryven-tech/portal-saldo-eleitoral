@@ -50,7 +50,7 @@ values ('NOME DA DIRETORA','email-confirmado@example.com','director');
 
 4. Configurar Google OAuth no Google Cloud e Supabase. Escopos somente de identidade básica. Callback Google: `https://PROJECT_REF.supabase.co/auth/v1/callback`. Definir URLs de origem e retorno exatas para homologação/produção; não usar curingas amplos.
 5. Habilitar o hook de banco `public.before_user_created` em **Authentication / Hooks / Before User Created**. Desabilitar provedores não usados, incluindo email/senha. Manter criação de contas Google permitida, pois o hook e a lista controlam a admissão. O trigger adicional também rejeita criação fora da lista.
-6. Publicar a Edge Function `submit-evidence`, com validação JWT habilitada. Definir `PORTAL_ORIGIN` com a origem exata do frontend de homologação/produção. Variáveis administrativas do Supabase ficam apenas no ambiente da função. Validar a versão de SDK e a autenticação do projeto antes da primeira carga.
+6. Publicar a Edge Function `submit-evidence` com `verify_jwt=false` para o projeto ECC atual. O handler exige bearer e valida a sessão com `auth.getUser()` antes de ler arquivos, reservar quota ou usar credencial de serviço. Não remover essa validação. Definir `PORTAL_ORIGIN` com a origem exata do frontend de homologação/produção. Variáveis administrativas do Supabase ficam apenas no ambiente da função. Validar a versão de SDK e a autenticação do projeto antes da primeira carga.
 7. Copiar `.env.example` para `.env.local` e configurar **somente** URL e chave publicável do projeto. `sb_secret_*` e JWT `service_role` são recusados pelo cliente. Nunca usar credencial administrativa em `VITE_*`.
 
 ```dotenv
@@ -89,7 +89,7 @@ Manter duas cópias protegidas, com recuperação separada. Backup de banco não
 
 ## Limitações que bloqueiam uso oficial
 
-- Projeto, escola, administradores e política institucional ainda não configurados.
+- Escola e administrador inicial configurados em projeto Free dedicado; política institucional, diretora definitiva e publicação ainda pendentes.
 - Google Auth, hook, Edge Function, banco e bucket reais ainda não testados.
 - Restauração assistida, reconciliação/limpeza de uploads e correções de usos já concluídos ainda pendentes.
 - Calendário, fracionamento, campos obrigatórios, privacidade/base legal e temporalidade exigem validação institucional.
@@ -101,3 +101,11 @@ Manter duas cópias protegidas, com recuperação separada. Backup de banco não
 Durante desenvolvimento, reverter código por Git sem apagar alterações não salvas. Em publicação, voltar deployment anterior somente se compatível com a migração vigente. A migração inicial não fornece `down` destrutivo: não apagar esquema/documentos como rollback. Em incidente, bloquear novas alterações, preservar banco e objetos e reconciliar por procedimento técnico. Exportar e verificar cópia antes de manutenção real.
 
 O `PLANO-MVP.md` registra o andamento e os próximos gates. `EVIDENCIAS-MVP.md` reúne verificações e limites efetivamente observados.
+
+## Estado da integração em 16/10/2026
+
+Projeto dedicado Free em São Paulo (`axdooojqsfmjkwzugdxw`), migração aplicada, bucket privado, bootstrap administrativo confirmado e hook de admissão ativo. E-mail/senha desativado. URL/chave publicável configuradas em .env.local ignorado pelo Git. Google OAuth ativo e primeiro login real da direção confirmado; testes entre servidores e aceite de uso oficial ainda pendentes. Não reaplicar a migração inicial nesse banco. Permissões padrão de novos objetos foram restringidas mesmo tendo sido criado com exposição automática marcada.
+
+Interface da direção: Servidores, Folgas e Backup. Gerenciamento de acessos abre na lista; análise documental abre na ficha individual. O favicon e a marca usam `/favicon.svg`, hospedado como arquivo estático no Pages, sem uso do Storage do Supabase.
+
+Teste da fronteira de upload: `npx.cmd --yes deno test --allow-env supabase/functions/submit-evidence/index_test.ts`. Captura o handler real e simula Auth/REST; verifica bloqueio antes da leitura do corpo e impede Storage sem reserva autorizada. Não substitui upload completo com sessão real.

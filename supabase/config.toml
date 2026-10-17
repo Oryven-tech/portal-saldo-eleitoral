@@ -1,4 +1,6 @@
 project_id = "portal-saldo-eleitoral"
 
 [functions.submit-evidence]
-verify_jwt = true
+# Project sessions use ECC. Legacy-only gateway verification cannot validate them.
+# The handler MUST validate the bearer session via Auth getUser before body/Storage access.
+verify_jwt = false

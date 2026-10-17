@@ -8,6 +8,7 @@ import {
   today,
 } from './domain';
 import type { Repository } from './repository';
+import { SCHOOL_NAME } from './school';
 
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const names = [
@@ -30,7 +31,7 @@ function seed(role: Role): PortalData {
     active: true,
   }));
   const data: PortalData = {
-    schoolName: 'Unidade escolar · demonstração',
+    schoolName: SCHOOL_NAME,
     user: {
       name: role === 'director' ? 'Maria, direção' : names[0],
       email: role === 'director' ? 'direcao@example.com' : staff[0].email,

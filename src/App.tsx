@@ -1,22 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import {
   ArrowDownToLine,
   ArrowRight,
-  ArrowUpRight,
-  Bell,
   CalendarDays,
   Check,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  ClipboardCheck,
-  FileCheck2,
   FileText,
   FolderLock,
-  HelpCircle,
-  LayoutDashboard,
-  Leaf,
   LoaderCircle,
   LogOut,
   Plus,
@@ -25,10 +18,6 @@ import {
   UploadCloud,
   Users,
   X,
-  Settings2,
-  AlertCircle,
-  RefreshCw,
-  Menu,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PortalData, Staff, Submission, Role, Booking } from './domain';
@@ -49,15 +38,14 @@ import { createSupabaseRepository, demoEnabled, supabase } from './repository';
 import { createDemoRepository } from './demo';
 import { exportBackup, saveBlob, verifyBackup } from './backup';
 import type { BackupSummary } from './backup';
+import { SCHOOL_NAME } from './school';
 
-type Page = 'overview' | 'staff' | 'documents' | 'calendar' | 'backup' | 'access' | 'help';
-const pages: { id: Page; label: string; icon: LucideIcon; director?: boolean }[] = [
-  { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
-  { id: 'staff', label: 'Servidores', icon: Users, director: true },
+type Page = 'overview' | 'documents' | 'calendar' | 'backup';
+const pages: { id: Page; label: string; icon: LucideIcon }[] = [
+  { id: 'overview', label: 'Servidores', icon: Users },
   { id: 'documents', label: 'Comprovantes', icon: FileText },
-  { id: 'calendar', label: 'Folgas e datas', icon: CalendarDays },
-  { id: 'backup', label: 'Relatórios e backup', icon: FolderLock, director: true },
-  { id: 'access', label: 'Acessos', icon: ShieldCheck, director: true },
+  { id: 'calendar', label: 'Folgas', icon: CalendarDays },
+  { id: 'backup', label: 'Backup', icon: FolderLock },
 ];
 const statusLabel = {
   pending: 'Aguardando análise',
@@ -68,17 +56,13 @@ const statusLabel = {
   used: 'Usufruída',
   cancelled: 'Cancelada',
 };
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand() {
   return (
     <div className="brand">
-      <span className="brand-mark">
-        <ClipboardCheck size={23} strokeWidth={1.5} />
+      <img src="/favicon.svg" width="40" height="40" alt="" />
+      <span>
+        Portal Saldo<span>Eleitoral</span>
       </span>
-      {!compact && (
-        <span>
-          Portal Saldo<span>Eleitoral</span>
-        </span>
-      )}
     </div>
   );
 }
@@ -136,7 +120,6 @@ function Notice({ children }: { children: ReactNode }) {
 function Empty({ title, text }: { title: string; text: string }) {
   return (
     <div className="empty">
-      <CheckCheck size={30} strokeWidth={1.2} />
       <h3>{title}</h3>
       <p>{text}</p>
     </div>
@@ -155,6 +138,7 @@ function Modal({
   busy?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const node = dialog.current!;
     node.showModal();
@@ -168,10 +152,10 @@ function Modal({
         e.preventDefault();
         if (!busy) close();
       }}
-      aria-labelledby="modal-title"
+      aria-labelledby={titleId}
     >
       <div className="modal-head">
-        <h2 id="modal-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button className="icon-button" onClick={close} disabled={busy} aria-label="Fechar janela">
           <X size={21} />
         </button>
@@ -265,133 +249,61 @@ function Landing({
   const [role, setRole] = useState<Role>('staff');
   const [privacy, setPrivacy] = useState(false);
   return (
-    <div className="landing">
-      <header className="landing-header">
+    <main className="access-screen">
+      <section className="access-card">
         <Brand />
-        <span className="landing-tag">
-          <ShieldCheck size={15} /> Acesso restrito à comunidade escolar
-        </span>
-      </header>
-      <main className="landing-main">
-        <section className="landing-copy">
-          <div className="eyebrow">
-            <span /> CONTROLE DE FOLGAS · ELEIÇÕES 2026
-          </div>
-          <h1>
-            Seu tempo,
-            <br />
-            em boas mãos.
-          </h1>
-          <p>
-            Comprovantes organizados. Datas combinadas.
-            <br className="desktop-break" /> E a tranquilidade de saber quantos dias você tem.
-          </p>
-          <div className="landing-points">
-            <span>
-              <FolderLock /> Documentos privados
-            </span>
-            <span>
-              <CalendarDays /> Histórico de folgas
-            </span>
-            <span>
-              <Leaf /> Mais clareza, menos papel
-            </span>
-          </div>
-          <div className="landing-footnote">
-            <span className="small-emblem">
-              <ClipboardCheck />
-            </span>
-            <p>
-              Um cuidado com quem
-              <br />
-              <strong>faz parte da escola.</strong>
-            </p>
-          </div>
-        </section>
-        <section className="login-card" aria-labelledby="login-title">
-          <div className="login-top">
-            <span className="label">BEM-VINDO AO PORTAL</span>
-            <h2 id="login-title">Vamos começar?</h2>
-            <p>Escolha seu acesso para continuar.</p>
-          </div>
-          <div className="role-switch" aria-label="Tipo de acesso">
-            <button aria-pressed={role === 'staff'} onClick={() => setRole('staff')}>
-              <Users size={17} /> Sou servidor
-            </button>
-            <button aria-pressed={role === 'director'} onClick={() => setRole('director')}>
-              <ShieldCheck size={17} /> Sou da direção
-            </button>
-          </div>
-          <div className="role-explanation">
-            <h3>
-              {role === 'staff' ? 'Seus dias, em um só lugar.' : 'Uma visão de toda a equipe.'}
-            </h3>
-            <p>
-              {role === 'staff'
-                ? 'Envie seus comprovantes e acompanhe o saldo e as datas das suas folgas.'
-                : 'Confira comprovantes, organize os créditos e acompanhe as folgas dos servidores.'}
-            </p>
-          </div>
-          <button className="google-button" onClick={login} disabled={!supabase}>
-            <GoogleIcon /> Continuar com Google <ArrowRight size={17} />
+        <h1>Entrar</h1>
+        <p className="school-name">{SCHOOL_NAME}</p>
+        <div className="role-switch" aria-label="Tipo de acesso">
+          <button aria-pressed={role === 'staff'} onClick={() => setRole('staff')}>
+            Servidor
           </button>
-          {!supabase && (
-            <p className="setup-note">
-              O acesso oficial será liberado após a configuração da escola.
-            </p>
-          )}
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
-          )}
-          <div className="login-security">
-            <ShieldCheck size={16} />
-            <p>
-              Use a conta Google autorizada pela direção.
-              <br />
-              Cada servidor acessa somente seus próprios dados.
-            </p>
-          </div>
-          {demoEnabled && (
-            <div className="demo-entry">
-              <span>Prévia com dados fictícios</span>
-              <button onClick={() => demo(role)}>
-                Explorar como {role === 'staff' ? 'servidor' : 'direção'} <ArrowUpRight size={14} />
-              </button>
-            </div>
-          )}
-        </section>
-      </main>
-      <footer className="landing-footer">
-        <span>
-          Portal Saldo Eleitoral <span className="dot">·</span> Organização que dá tranquilidade.
-        </span>
-        <button onClick={() => setPrivacy(true)}>
-          Privacidade e uso de dados <ArrowUpRight size={13} />
+          <button aria-pressed={role === 'director'} onClick={() => setRole('director')}>
+            Direção
+          </button>
+        </div>
+        <button className="google-button" onClick={login} disabled={!supabase}>
+          <GoogleIcon />
+          Continuar com Google
         </button>
-      </footer>
+        {!supabase && <p className="setup-note">Acesso em configuração.</p>}
+        {error && (
+          <p role="alert" className="form-error">
+            {error}
+          </p>
+        )}
+        <p className="access-instruction">Utilize a conta autorizada pela direção.</p>
+        {demoEnabled && (
+          <div className="local-test">
+            <span>Teste local · dados fictícios</span>
+            <button onClick={() => demo(role)}>
+              Testar acesso de {role === 'staff' ? 'servidor' : 'direção'}
+            </button>
+          </div>
+        )}
+        <button className="privacy-link" onClick={() => setPrivacy(true)}>
+          Privacidade
+        </button>
+      </section>
       {privacy && (
-        <Modal title="Privacidade e uso de dados" close={() => setPrivacy(false)}>
+        <Modal title="Privacidade" close={() => setPrivacy(false)}>
           <div className="prose">
+            <p>{SCHOOL_NAME}.</p>
             <p>
-              O portal reúne dados funcionais e comprovantes de serviço eleitoral para a gestão de
-              folgas da escola.
+              O portal registra comprovantes de serviço eleitoral, créditos e folgas. Cada servidor
+              acessa seus próprios registros; a direção acessa os registros da escola.
             </p>
             <p>
-              O servidor consulta seus próprios registros. A direção acessa informações conforme
-              suas atribuições. Os documentos serão mantidos em armazenamento privado.
+              Contato institucional, base legal e política de guarda serão confirmados antes do uso
+              oficial.
             </p>
-            <p>
-              Antes da abertura oficial, a escola identificará o responsável pelo tratamento,
-              contato, base legal e política de guarda. A demonstração utiliza dados fictícios e
-              mantém alterações apenas nesta sessão.
-            </p>
-            <p>Não anexe documentos pessoais na demonstração.</p>
+            {demoEnabled && (
+              <p>O teste local usa dados fictícios e não deve receber documentos pessoais.</p>
+            )}
           </div>
         </Modal>
       )}
-    </div>
+    </main>
   );
 }
 
@@ -406,16 +318,14 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
   const [person, setPerson] = useState<Staff | null>(null);
   const [evidence, setEvidence] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [access, setAccess] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const [menu, setMenu] = useState(false);
   const refresh = async () => {
     setError('');
     try {
       setData(await repo.load());
     } catch {
-      setError(
-        'Não foi possível carregar o portal. O serviço pode estar temporariamente indisponível. Tente novamente ou procure a direção.',
-      );
+      setError('Não foi possível carregar os registros. Tente novamente.');
     }
   };
   useEffect(() => {
@@ -426,10 +336,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
         if (live) setData(value);
       })
       .catch(() => {
-        if (live)
-          setError(
-            'Não foi possível abrir seu acesso. Confira a autorização com a direção; o serviço também pode estar indisponível.',
-          );
+        if (live) setError('Acesso indisponível. Confira a autorização ou tente novamente.');
       });
     return () => {
       live = false;
@@ -468,158 +375,93 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
         {error ? (
           <>
             <p role="alert">{error}</p>
-            <Button onClick={refresh} icon={RefreshCw}>
-              Tentar novamente
-            </Button>
+            <Button onClick={refresh}>Tentar novamente</Button>
             <button className="text-button" onClick={exit}>
-              Voltar ao início
+              Sair
             </button>
           </>
         ) : (
           <>
             <LoaderCircle className="spin" />
-            <p>Organizando suas informações…</p>
+            <p>Carregando…</p>
           </>
         )}
       </main>
     );
   const director = data.user.role === 'director';
-  const current = pages.find((p) => p.id === page);
-  const pending = data.submissions.filter((s) => s.status === 'pending').length;
+  const navigation = pages.filter((p) => (director ? p.id !== 'documents' : p.id !== 'backup'));
+  const label = (id: Page) =>
+    id === 'overview' && !director ? 'Meu saldo' : pages.find((p) => p.id === id)!.label;
   return (
-    <div className="app-shell">
+    <div className="app-shell simple-shell">
       <a className="skip-link" href="#main-content">
         Ir para o conteúdo
       </a>
       <aside className="sidebar">
         <Brand />
-        <div className="workspace-label">
-          <span className="online-dot" />{' '}
-          {repo.mode === 'demo' ? 'Espaço de demonstração' : 'Espaço da escola'}
-        </div>
         <nav aria-label="Navegação principal">
-          {pages
-            .filter((p) => director || !p.director)
-            .map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                className={page === id ? 'nav-link active' : 'nav-link'}
-                aria-label={id === 'overview' && !director ? 'Meu saldo' : label}
-                onClick={() => setPage(id)}
-                aria-current={page === id ? 'page' : undefined}
-              >
-                <Icon size={19} strokeWidth={1.65} />
-                <span>{id === 'overview' && !director ? 'Meu saldo' : label}</span>
-                {id === 'documents' && pending > 0 && <span className="nav-count">{pending}</span>}
-              </button>
-            ))}
+          {navigation.map(({ id, icon: Icon }) => (
+            <button
+              key={id}
+              className={page === id ? 'nav-link active' : 'nav-link'}
+              aria-label={label(id)}
+              onClick={() => setPage(id)}
+              aria-current={page === id ? 'page' : undefined}
+            >
+              <Icon size={18} />
+              <span>{label(id)}</span>
+            </button>
+          ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <Leaf size={23} strokeWidth={1.4} />
-            <p>
-              Organizar hoje.
-              <br />
-              <strong>Ter tranquilidade amanhã.</strong>
-            </p>
-          </div>
-          <button
-            className={`nav-link ${page === 'help' ? 'active' : ''}`}
-            onClick={() => setPage('help')}
-          >
-            <HelpCircle size={19} /> Ajuda e orientações
-          </button>
           <button className="nav-link" onClick={exit}>
-            <LogOut size={18} /> Sair do portal
+            <LogOut size={18} />
+            <span>Sair</span>
           </button>
         </div>
       </aside>
       <div className="app-body">
         <header className="topbar">
-          <div className="breadcrumb">
-            Espaço da escola <ChevronRight size={13} />
-            <strong>{page === 'help' ? 'Ajuda' : current?.label}</strong>
-          </div>
+          <span className="school-heading">{data.schoolName}</span>
           <div className="topbar-right">
-            <button
-              className="icon-button mobile-more"
-              aria-label="Mais opções"
-              onClick={() => setMenu(true)}
-            >
-              <Menu size={21} />
-            </button>
             <span className="role-tag">{director ? 'Direção' : 'Servidor'}</span>
-            <button
-              className="icon-button notifications"
-              aria-label="Ver pendências"
-              onClick={() => setPage('documents')}
-            >
-              <Bell size={19} />
-              {pending > 0 && <span />}
+            <button className="text-button mobile-signout" onClick={exit}>
+              Sair
             </button>
-            <div className="user-avatar" title={data.user.name}>
-              {initials(data.user.name)}
-            </div>
           </div>
         </header>
-        {repo.mode === 'demo' && (
-          <div className="demo-banner">
-            <span>
-              <span className="demo-dot" /> Demonstração · dados fictícios, alterações temporárias
-            </span>
-            <button onClick={exit}>
-              Voltar ao acesso <ArrowUpRight size={13} />
-            </button>
-          </div>
-        )}
         <main id="main-content" className="page-content">
+          {repo.mode === 'demo' && (
+            <p className="test-indicator">Teste local · dados fictícios, sem gravação oficial.</p>
+          )}
           <div className="page-header">
-            <div>
-              <div className="eyebrow">
-                {director ? 'PAINEL DA DIREÇÃO' : 'ÁREA DO SERVIDOR'}{' '}
-                <span className="eyebrow-separator">/</span> ELEIÇÕES 2026
-              </div>
-              <h1 ref={heading} tabIndex={-1}>
-                {page === 'overview'
-                  ? director
-                    ? 'Tudo em um só lugar.'
-                    : `Olá, ${data.user.name.split(' ')[0]}.`
-                  : page === 'help'
-                    ? 'Estamos por aqui.'
-                    : current?.label}
-              </h1>
-              <p>
-                {page === 'overview'
-                  ? director
-                    ? 'Acompanhe os créditos e cuide das folgas da sua equipe.'
-                    : 'Acompanhe seus créditos, comprovantes e dias de descanso.'
-                  : page === 'staff'
-                    ? 'Cada pessoa, seus comprovantes e seu saldo.'
-                    : page === 'documents'
-                      ? 'Documentos organizados para uma conferência tranquila.'
-                      : page === 'calendar'
-                        ? 'Datas combinadas, equipe organizada.'
-                        : page === 'backup'
-                          ? 'Tenha uma cópia dos registros sempre por perto.'
-                          : page === 'access'
-                            ? 'Defina quem pode entrar no espaço da escola.'
-                            : 'Informações para usar o portal com tranquilidade.'}
-              </p>
-            </div>
-            <div className="header-action">
-              {director && (page === 'overview' || page === 'calendar') ? (
-                <Button icon={Plus} onClick={() => setBookingStaff('')}>
+            <h1 ref={heading} tabIndex={-1}>
+              {label(page)}
+            </h1>
+            <div className="simple-actions">
+              {director && page === 'overview' && (
+                <>
+                  <Button secondary onClick={() => setAccess(true)}>
+                    Gerenciar acessos
+                  </Button>
+                  <Button
+                    disabled={!data.staff.some((s) => s.active)}
+                    onClick={() => setBookingStaff('')}
+                  >
+                    Registrar folga
+                  </Button>
+                </>
+              )}
+              {director && page === 'calendar' && (
+                <Button
+                  disabled={!data.staff.some((s) => s.active)}
+                  onClick={() => setBookingStaff('')}
+                >
                   Registrar folga
                 </Button>
-              ) : !director && (page === 'overview' || page === 'documents') ? (
-                <Button icon={Plus} onClick={() => setEvidence(true)}>
-                  Enviar comprovante
-                </Button>
-              ) : (
-                <span className="date-label">
-                  <CalendarDays size={16} />
-                  {formatDate(today(), { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
+              )}
+              {!director && (page === 'overview' || page === 'documents') && (
+                <Button onClick={() => setEvidence(true)}>Enviar comprovante</Button>
               )}
             </div>
           </div>
@@ -628,19 +470,13 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
               {error}
             </p>
           )}
-          {page === 'overview' && (
-            <Overview
-              data={data}
-              director={director}
-              navigate={setPage}
-              openPerson={setPerson}
-              review={setReview}
-            />
-          )}
-          {page === 'staff' && director && (
-            <StaffPage data={data} openPerson={setPerson} book={setBookingStaff} />
-          )}
-          {page === 'documents' && (
+          {page === 'overview' &&
+            (director ? (
+              <StaffPage data={data} openPerson={setPerson} />
+            ) : (
+              <Overview data={data} />
+            ))}
+          {page === 'documents' && !director && (
             <DocumentsPage data={data} repo={repo} review={setReview} notify={setToast} />
           )}
           {page === 'calendar' && (
@@ -655,9 +491,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
               change={(b, status) =>
                 safeAction(
                   () => repo.changeBooking(b.id, status),
-                  status === 'used'
-                    ? 'Uso confirmado. Saldo atualizado.'
-                    : 'Agendamento cancelado. Reserva liberada.',
+                  status === 'used' ? 'Uso confirmado.' : 'Agendamento cancelado.',
                 )
               }
             />
@@ -665,53 +499,23 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           {page === 'backup' && director && (
             <BackupPage data={data} repo={repo} notify={setToast} />
           )}
-          {page === 'access' && director && (
-            <AccessPage data={data} repo={repo} action={action} notify={setToast} />
-          )}
-          {page === 'help' && <HelpPage demo={repo.mode === 'demo'} />}
-          <footer className="app-footer">
-            <span>
-              <ShieldCheck size={14} /> {data.schoolName}
-            </span>
-            <span>
-              Portal Saldo Eleitoral <span className="dot">·</span> Cuidado em cada registro.
-            </span>
-          </footer>
         </main>
       </div>
       <nav className="mobile-nav" aria-label="Navegação no celular">
-        {pages
-          .filter((p) =>
-            (director
-              ? ['overview', 'staff', 'documents', 'calendar', 'backup']
-              : ['overview', 'documents', 'calendar']
-            ).includes(p.id),
-          )
-          .map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={page === id ? 'active' : ''}
-              onClick={() => setPage(id)}
-              aria-current={page === id ? 'page' : undefined}
-            >
-              <Icon size={20} />
-              <span>
-                {id === 'overview'
-                  ? 'Início'
-                  : id === 'backup'
-                    ? 'Backup'
-                    : id === 'documents'
-                      ? 'Documentos'
-                      : id === 'calendar'
-                        ? 'Folgas'
-                        : label}
-              </span>
-            </button>
-          ))}
+        {navigation.map(({ id, icon: Icon }) => (
+          <button
+            key={id}
+            className={page === id ? 'active' : ''}
+            onClick={() => setPage(id)}
+            aria-current={page === id ? 'page' : undefined}
+          >
+            <Icon size={20} />
+            <span>{label(id)}</span>
+          </button>
+        ))}
       </nav>
       {toast && (
         <div className="toast" role="status">
-          <AlertCircle size={18} />
           <span>{toast}</span>
           <button aria-label="Fechar aviso" onClick={() => setToast('')}>
             <X size={16} />
@@ -730,7 +534,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           save={async (input) => {
             await action(
               () => (editingBooking ? repo.reschedule(input) : repo.book(input)),
-              'Agendamento salvo. Reserva atualizada.',
+              'Agendamento salvo.',
             );
             setBookingStaff(null);
             setEditingBooking(null);
@@ -746,9 +550,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           save={async (days, note, approved) => {
             await action(
               () => repo.review(review.id, days, note, approved),
-              approved
-                ? 'Crédito aprovado e registrado no histórico.'
-                : 'Pedido devolvido para correção.',
+              approved ? 'Crédito aprovado.' : 'Correção solicitada.',
             );
             setReview(null);
           }}
@@ -758,11 +560,13 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
         <PersonModal
           person={person}
           data={data}
+          repo={repo}
+          review={(item) => {
+            setPerson(null);
+            setReview(item);
+          }}
           adjust={async (id, days, reason) => {
-            await action(
-              () => repo.adjust(id, person.id, days, reason),
-              'Ajuste registrado no histórico.',
-            );
+            await action(() => repo.adjust(id, person.id, days, reason), 'Ajuste registrado.');
           }}
           close={() => setPerson(null)}
           book={() => {
@@ -771,39 +575,9 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           }}
         />
       )}
-      {menu && (
-        <Modal title="Navegar no portal" close={() => setMenu(false)}>
-          <div className="mobile-menu-list">
-            {pages
-              .filter((p) => director || !p.director)
-              .map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    setPage(id);
-                    setMenu(false);
-                  }}
-                >
-                  <Icon size={19} />
-                  {label}
-                  <ChevronRight size={16} />
-                </button>
-              ))}
-            <button
-              onClick={() => {
-                setPage('help');
-                setMenu(false);
-              }}
-            >
-              <HelpCircle size={19} />
-              Ajuda e orientações
-              <ChevronRight size={16} />
-            </button>
-            <button onClick={exit}>
-              <LogOut size={19} />
-              Sair do portal
-            </button>
-          </div>
+      {access && (
+        <Modal title="Acessos autorizados" close={() => setAccess(false)}>
+          <AccessPage data={data} repo={repo} action={action} notify={setToast} />
         </Modal>
       )}
       {evidence && (
@@ -823,287 +597,54 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
   );
 }
 
-function Overview({
-  data,
-  director,
-  navigate,
-  openPerson,
-  review,
-}: {
-  data: PortalData;
-  director: boolean;
-  navigate: (p: Page) => void;
-  openPerson: (s: Staff) => void;
-  review: (s: Submission) => void;
-}) {
+function Overview({ data }: { data: PortalData }) {
   const totals = balance(data);
-  const pending = data.submissions.filter((s) => s.status === 'pending');
-  const stats = director
-    ? [
-        {
-          label: 'Servidores cadastrados',
-          value: data.staff.length,
-          note: 'Pessoas da sua equipe',
-          icon: Users,
-          tone: 'green',
-        },
-        {
-          label: 'Dias disponíveis',
-          value: totals.available,
-          note: 'Saldo livre para agendar',
-          icon: Leaf,
-          tone: 'sand',
-        },
-        {
-          label: 'Aguardando análise',
-          value: pending.length,
-          note: 'Comprovantes para conferir',
-          icon: FileCheck2,
-          tone: 'terra',
-        },
-        {
-          label: 'Dias agendados',
-          value: totals.reserved,
-          note: 'Reservados pela direção',
-          icon: CalendarDays,
-          tone: 'blue',
-        },
-      ]
-    : [
-        {
-          label: 'Créditos aprovados',
-          value: totals.credits,
-          note: 'Seu direito reconhecido',
-          icon: FileCheck2,
-          tone: 'green',
-        },
-        {
-          label: 'Dias disponíveis',
-          value: totals.available,
-          note: 'Livres para combinar',
-          icon: Leaf,
-          tone: 'sand',
-        },
-        {
-          label: 'Dias usufruídos',
-          value: totals.used,
-          note: 'Descansos já registrados',
-          icon: CheckCheck,
-          tone: 'terra',
-        },
-        {
-          label: 'Dias agendados',
-          value: totals.reserved,
-          note: 'Suas próximas folgas',
-          icon: CalendarDays,
-          tone: 'blue',
-        },
-      ];
-  const upcoming = data.bookings
-    .filter((b) => b.status === 'reserved')
-    .sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
   return (
     <>
-      <div className="stats-grid">
-        {stats.map(({ label, value, note, icon: Icon, tone }) => (
+      <div className="stats-grid student-balance">
+        {[
+          ['Disponíveis', totals.available],
+          ['Usufruídos', totals.used],
+          ['Reservados', totals.reserved],
+        ].map(([label, value]) => (
           <section className="stat-card" key={label}>
-            <div className="stat-top">
-              <span>{label}</span>
-              <span className={`stat-icon ${tone}`}>
-                <Icon size={19} strokeWidth={1.6} />
-              </span>
-            </div>
+            <span>{label}</span>
             <strong>
               {value}
-              <span>{label.includes('Dias') || label.includes('Créditos') ? ' dias' : ''}</span>
+              <span> dias</span>
             </strong>
-            <p>{note}</p>
           </section>
         ))}
       </div>
-      <div className="overview-grid">
-        <div className="main-column">
-          <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>{director ? 'Próximas folgas' : 'Seus próximos dias de descanso'}</h2>
-                <p>Datas já combinadas com a direção.</p>
-              </div>
-              <button className="text-button" onClick={() => navigate('calendar')}>
-                Ver agenda <ArrowRight size={15} />
-              </button>
-            </div>
-            {upcoming.length ? (
-              <div className="upcoming-list">
-                {upcoming.slice(0, 4).map((b) => {
-                  const person = data.staff.find((s) => s.id === b.staffId)!;
-                  return (
-                    <div className="upcoming-row" key={b.id}>
-                      <div className="date-tile">
-                        <strong>{b.dates[0].slice(8)}</strong>
-                        <span>{formatDate(b.dates[0], { month: 'short' }).replace('.', '')}</span>
-                      </div>
-                      <button className="person-link" onClick={() => openPerson(person)}>
-                        <strong>{person?.name ?? 'Servidor'}</strong>
-                        <span>{b.dates.map((d) => formatDate(d)).join(' · ')}</span>
-                      </button>
-                      <span className="days-pill">
-                        {b.dates.length} {b.dates.length === 1 ? 'dia' : 'dias'}
-                      </span>
-                      <Badge status="reserved" />
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <Empty
-                title="Nenhuma folga agendada"
-                text="Os próximos dias combinados aparecerão aqui."
-              />
-            )}
-          </section>
-          <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>{director ? 'Um olhar para a equipe' : 'Seu extrato de dias'}</h2>
-                <p>
-                  {director
-                    ? 'Saldos atualizados a cada movimentação.'
-                    : 'Tudo que foi aprovado, reservado e usufruído.'}
-                </p>
-              </div>
-              {director && (
-                <button className="text-button" onClick={() => navigate('staff')}>
-                  Ver todos <ArrowRight size={15} />
-                </button>
-              )}
-            </div>
-            {director ? (
-              <StaffTable data={data} staff={data.staff.slice(0, 4)} openPerson={openPerson} />
-            ) : (
-              <div className="ledger-list">
-                {data.credits.map((c) => (
-                  <div className="ledger-row" key={c.id}>
-                    <span className="activity-icon">
-                      <Plus size={17} />
-                    </span>
-                    <div>
-                      <strong>{c.reason}</strong>
-                      <small>{formatDate(c.createdAt)} · Aprovado pela direção</small>
-                    </div>
-                    <strong className="positive">
-                      {c.days > 0 ? '+' : ''}
-                      {c.days} dias
-                    </strong>
-                  </div>
-                ))}
-                {data.bookings
-                  .filter((b) => b.status === 'used')
-                  .map((b) => (
-                    <div className="ledger-row" key={b.id}>
-                      <span className="activity-icon terra">
-                        <Check size={17} />
-                      </span>
-                      <div>
-                        <strong>Folga usufruída</strong>
-                        <small>{b.dates.map((d) => formatDate(d)).join(' · ')}</small>
-                      </div>
-                      <strong>−{b.dates.length} dias</strong>
-                    </div>
-                  ))}
-                {!data.credits.length && (
-                  <Empty
-                    title="Seu histórico começa aqui"
-                    text="Os créditos aparecerão após a conferência dos comprovantes."
-                  />
-                )}
-              </div>
-            )}
-          </section>
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Histórico de créditos</h2>
         </div>
-        <aside className="right-column">
-          <section className="panel attention-panel">
-            <div className="panel-heading">
-              <h2>{pending.length ? 'Pedem sua atenção' : 'Tudo organizado'}</h2>
-              <span className="attention-dot" />
+        <div className="ledger-list">
+          {data.credits.map((c) => (
+            <div className="ledger-row" key={c.id}>
+              <div>
+                <strong>{c.reason}</strong>
+                <small>{formatDate(c.createdAt)}</small>
+              </div>
+              <strong>
+                {c.days > 0 ? '+' : ''}
+                {c.days} dias
+              </strong>
             </div>
-            {pending.length ? (
-              <>
-                <p className="attention-copy">
-                  {director
-                    ? 'Novos comprovantes chegaram. Uma conferência e tudo segue em dia.'
-                    : 'Seus comprovantes estão aguardando a conferência da direção.'}
-                </p>
-                {pending.slice(0, 3).map((s) => (
-                  <button
-                    key={s.id}
-                    className="pending-item"
-                    onClick={() => (director ? review(s) : navigate('documents'))}
-                  >
-                    <span className="file-icon">
-                      <FileText size={18} />
-                    </span>
-                    <span>
-                      <strong>{data.staff.find((p) => p.id === s.staffId)?.name}</strong>
-                      <small>{s.activity}</small>
-                    </span>
-                    <ChevronRight size={15} />
-                  </button>
-                ))}
-                <button className="attention-link" onClick={() => navigate('documents')}>
-                  {director ? 'Ir para comprovantes' : 'Acompanhar análise'}
-                  <ArrowRight size={15} />
-                </button>
-              </>
-            ) : (
-              <Empty title="Sem pendências" text="As novidades aparecerão por aqui." />
-            )}
-          </section>
-          <section className="calm-card">
-            <span className="botanical">
-              <Leaf size={32} strokeWidth={1.1} />
-            </span>
-            <span className="label">CLAREZA PARA TODOS</span>
-            <h2>
-              Menos dúvidas.
-              <br />
-              Mais tranquilidade.
-            </h2>
-            <p>
-              {director
-                ? 'Cada servidor acompanha o próprio saldo. Você cuida da equipe com tudo organizado.'
-                : 'Seu saldo é atualizado após a conferência e o registro das folgas pela direção.'}
-            </p>
-            <button className="text-button" onClick={() => navigate('help')}>
-              Como funciona <ArrowUpRight size={15} />
-            </button>
-          </section>
-          {director && (
-            <section className="activity-panel">
-              <h3>Últimos registros</h3>
-              {data.audit.slice(0, 3).map((a) => (
-                <div className="activity-item" key={a.id}>
-                  <span />
-                  <div>
-                    <strong>{a.action}</strong>
-                    <p>{a.detail}</p>
-                    <small>
-                      {formatDate(a.createdAt)} · {a.actor}
-                    </small>
-                  </div>
-                </div>
-              ))}
-            </section>
+          ))}
+          {!data.credits.length && (
+            <Empty
+              title="Nenhum crédito aprovado"
+              text="Os comprovantes enviados precisam ser analisados pela direção."
+            />
           )}
-        </aside>
-      </div>
-      <Notice>
-        Os dias informados pelo servidor passam por conferência. O saldo disponível considera
-        créditos aprovados, usos e reservas.
-      </Notice>
+        </div>
+      </section>
     </>
   );
 }
+
 function StaffTable({
   data,
   staff,
@@ -1127,16 +668,18 @@ function StaffTable({
           </tr>
         </thead>
         <tbody>
-          {staff.map((s, i) => {
+          {staff.map((s) => {
             const b = balance(data, s.id);
             return (
               <tr key={s.id}>
                 <td>
                   <button className="table-person" onClick={() => openPerson(s)}>
-                    <span className={`avatar avatar-${i % 4}`}>{initials(s.name)}</span>
                     <span>
                       <strong>{s.name}</strong>
                       <small>{s.registration || 'Matrícula não informada'}</small>
+                      {data.submissions.some(
+                        (item) => item.staffId === s.id && item.status === 'pending',
+                      ) && <small className="pending-label">Comprovante pendente</small>}
                     </span>
                   </button>
                 </td>
@@ -1159,7 +702,7 @@ function StaffTable({
                     onClick={() => openPerson(s)}
                     aria-label={`Ver ficha de ${s.name}`}
                   >
-                    <ArrowUpRight size={17} />
+                    Abrir
                   </button>
                 </td>
               </tr>
@@ -1170,23 +713,18 @@ function StaffTable({
     </div>
   );
 }
-function StaffPage({
-  data,
-  openPerson,
-  book,
-}: {
-  data: PortalData;
-  openPerson: (s: Staff) => void;
-  book: (id: string) => void;
-}) {
+function StaffPage({ data, openPerson }: { data: PortalData; openPerson: (s: Staff) => void }) {
   const [query, setQuery] = useState('');
-  const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const pendingIds = new Set(
+    data.submissions.filter((s) => s.status === 'pending').map((s) => s.staffId),
+  );
   const filtered = data.staff.filter(
     (s) =>
-      `${s.name} ${s.registration}`
+      (s.name + ' ' + s.registration)
         .toLocaleLowerCase('pt-BR')
         .includes(query.toLocaleLowerCase('pt-BR')) &&
-      (!onlyAvailable || balance(data, s.id).available > 0),
+      (!pendingOnly || pendingIds.has(s.id)),
   );
   return (
     <section className="panel">
@@ -1195,33 +733,38 @@ function StaffPage({
           <Search size={18} />
           <input
             aria-label="Buscar servidor por nome ou matrícula"
-            placeholder="Buscar por nome ou matrícula"
+            placeholder="Buscar nome ou matrícula"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         <button
-          className={`filter-button ${onlyAvailable ? 'selected' : ''}`}
-          onClick={() => setOnlyAvailable(!onlyAvailable)}
-          aria-pressed={onlyAvailable}
+          className={pendingOnly ? 'filter-button selected' : 'filter-button'}
+          onClick={() => setPendingOnly(!pendingOnly)}
+          aria-pressed={pendingOnly}
         >
-          <Settings2 size={16} /> Com saldo disponível
+          Comprovantes pendentes ({pendingIds.size})
         </button>
-        <Button icon={Plus} onClick={() => book('')}>
-          Registrar folga
-        </Button>
       </div>
       <div className="list-count">
-        {filtered.length} {filtered.length === 1 ? 'servidor encontrado' : 'servidores encontrados'}
+        {filtered.length} {filtered.length === 1 ? 'servidor' : 'servidores'}
       </div>
       {filtered.length ? (
         <StaffTable data={data} staff={filtered} openPerson={openPerson} />
       ) : (
-        <Empty title="Nenhum servidor encontrado" text="Confira o nome ou remova os filtros." />
+        <Empty
+          title={data.staff.length ? 'Nenhum servidor encontrado' : 'Nenhum servidor cadastrado'}
+          text={
+            data.staff.length
+              ? 'Confira o nome ou remova o filtro.'
+              : 'Use Gerenciar acessos para autorizar o primeiro servidor.'
+          }
+        />
       )}
     </section>
   );
 }
+
 function DocumentsPage({
   data,
   repo,
@@ -1594,7 +1137,7 @@ function BookingModal({
         </label>
         {staffId && (
           <div className="balance-note">
-            <Leaf size={17} /> {balance(data, staffId).available} dias disponíveis para agendar
+            {balance(data, staffId).available} dias disponíveis para agendar
           </div>
         )}
         <label className="field">
@@ -1761,12 +1304,16 @@ function PersonModal({
   close,
   book,
   adjust,
+  repo,
+  review,
 }: {
   person: Staff;
   data: PortalData;
   close: () => void;
   book: () => void;
   adjust: (id: string, days: number, reason: string) => Promise<void>;
+  repo: Repository;
+  review: (item: Submission) => void;
 }) {
   const b = balance(data, person.id);
   const [editing, setEditing] = useState(false);
@@ -1857,6 +1404,27 @@ function PersonModal({
           </div>
         ))}
       </div>
+      <h3 className="section-small">Comprovantes</h3>
+      {data.submissions
+        .filter((s) => s.staffId === person.id)
+        .map((item) => (
+          <section className="person-document" key={item.id}>
+            <div>
+              <strong>{item.activity}</strong>
+              <Badge status={item.status} />
+            </div>
+            <DocumentLinks data={data} submissionId={item.id} repo={repo} notify={setError} />
+            {item.note && <p>{item.note}</p>}
+            {item.status === 'pending' && (
+              <Button secondary onClick={() => review(item)}>
+                Analisar comprovantes
+              </Button>
+            )}
+          </section>
+        ))}
+      {!data.submissions.some((s) => s.staffId === person.id) && (
+        <p className="muted">Nenhum comprovante enviado.</p>
+      )}
       <h3 className="section-small">Histórico de créditos</h3>
       {data.credits
         .filter((c) => c.staffId === person.id)
@@ -2081,7 +1649,6 @@ function AccessPage({
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Acessos autorizados</h2>
             <p>Autorize o e-mail antes do primeiro acesso.</p>
           </div>
           <Button icon={Plus} onClick={() => setOpen(true)}>
@@ -2091,7 +1658,6 @@ function AccessPage({
         <div className="access-list">
           {data.access.map((a) => (
             <div className="access-row" key={a.id}>
-              <span className="avatar">{initials(a.name)}</span>
               <div>
                 <strong>{a.name}</strong>
                 <span>{a.email}</span>
@@ -2240,19 +1806,8 @@ function BackupPage({
   };
   return (
     <>
-      <div className="backup-hero">
-        <span className="backup-emblem">
-          <FolderLock size={36} strokeWidth={1.3} />
-        </span>
-        <div>
-          <span className="label">UMA CÓPIA PARA FICAR TRANQUILO</span>
-          <h2>Seus registros merecem cuidado.</h2>
-          <p>Guarde dados e comprovantes juntos. Mantenha uma cópia protegida fora do portal.</p>
-        </div>
-      </div>
       <div className="backup-grid">
         <section className="panel backup-card">
-          <FileText size={25} strokeWidth={1.4} />
           <h2>Relatório de saldos</h2>
           <p>
             Uma planilha CSV com os saldos da equipe para consulta. Não substitui o backup completo.
@@ -2271,7 +1826,6 @@ function BackupPage({
           </Button>
         </section>
         <section className="panel backup-card">
-          <FolderLock size={25} strokeWidth={1.4} />
           <h2>Backup completo</h2>
           <p>
             Dados, histórico e PDFs originais em partes protegidas por uma frase de recuperação.
@@ -2291,7 +1845,6 @@ function BackupPage({
           </Button>
         </section>
         <section className="panel backup-card">
-          <ShieldCheck size={25} strokeWidth={1.4} />
           <h2>Verificar uma cópia</h2>
           <p>
             Confira se todas as partes e documentos estão íntegros. A verificação não altera o
@@ -2314,22 +1867,6 @@ function BackupPage({
         Guarde uma cópia local e outra em uma pasta privada, por exemplo no Drive da escola. A
         recuperação em produção será assistida pelo responsável técnico.
       </Notice>
-      <section className="panel backup-instructions">
-        <h2>Uma rotina simples de proteção</h2>
-        <ol>
-          <li>Gere uma cópia após grandes alterações e ao menos semanalmente durante o uso.</li>
-          <li>Guarde todas as partes e mantenha a frase de recuperação em outro lugar seguro.</li>
-          <li>Use “Verificar backup” para conferir os arquivos que você salvou.</li>
-          <li>
-            Para restaurar, procure o responsável técnico: uma cópia antiga pode substituir
-            alterações recentes.
-          </li>
-        </ol>
-        <p>
-          Entrar com Google não conecta automaticamente seu Drive. O envio da cópia ao Drive é
-          manual nesta versão.
-        </p>
-      </section>
       {mode && (
         <Modal
           title={mode === 'export' ? 'Gerar backup protegido' : 'Verificar backup'}
@@ -2436,70 +1973,5 @@ function BackupPage({
         </Modal>
       )}
     </>
-  );
-}
-function HelpPage({ demo }: { demo: boolean }) {
-  return (
-    <div className="help-grid">
-      <section className="panel prose">
-        <span className="file-icon">
-          <HelpCircle size={24} />
-        </span>
-        <h2>Como o portal funciona</h2>
-        <h3>1. Comprove os dias</h3>
-        <p>
-          Entre com sua conta Google autorizada, preencha o formulário e anexe os PDFs originais.
-        </p>
-        <h3>2. Aguarde a conferência</h3>
-        <p>
-          A direção analisa os documentos e aprova os créditos. Se algo precisar de ajuste, você
-          recebe a orientação no portal.
-        </p>
-        <h3>3. Combine suas folgas</h3>
-        <p>
-          A direção registra as datas. O agendamento reserva os dias; a confirmação do uso atualiza
-          o histórico.
-        </p>
-        <h3>4. Acompanhe com clareza</h3>
-        <p>
-          Disponíveis são os créditos aprovados menos os dias usados e reservados. O prazo de
-          funcionamento do portal não determina o vencimento do direito.
-        </p>
-      </section>
-      <div>
-        <section className="panel prose">
-          <h2>Não conseguiu acessar?</h2>
-          <p>
-            Confirme se entrou com a conta Google informada à direção. Uma conta diferente não terá
-            os mesmos acessos.
-          </p>
-          <p>
-            Se o serviço estiver indisponível, procure a direção. O projeto gratuito pode ser
-            pausado por pouca atividade e precisar de reativação no Supabase.
-          </p>
-          <p>
-            A reativação é feita por responsável autorizado na infraestrutura, não pela senha de
-            outro usuário.
-          </p>
-        </section>
-        <section className="panel prose">
-          <h2>Privacidade e suporte</h2>
-          <p>
-            Seu cadastro e seus PDFs são restritos às pessoas autorizadas. Evite utilizar
-            computadores compartilhados sem sair da conta ao terminar.
-          </p>
-          <p>
-            Identificação da escola, contato institucional, política de guarda e procedimento
-            administrativo serão definidos antes da abertura oficial.
-          </p>
-          {demo && (
-            <p className="setup-note">
-              Esta versão é uma demonstração com dados fictícios. Alterações desaparecem ao sair;
-              não envie dados reais.
-            </p>
-          )}
-        </section>
-      </div>
-    </div>
   );
 }

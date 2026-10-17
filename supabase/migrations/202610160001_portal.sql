@@ -1,5 +1,9 @@
 -- Portal Saldo Eleitoral. Apply to a dedicated, empty Supabase project.
 begin;
+-- Keep new objects private even if the project was created with automatic grants.
+alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;
+alter default privileges for role postgres in schema public revoke all on sequences from anon, authenticated;
+alter default privileges for role postgres in schema public revoke all on functions from public, anon, authenticated;
 create schema if not exists private;
 revoke all on schema private from public, anon;
 grant usage on schema private to authenticated;
@@ -51,6 +55,7 @@ create table public.audit_events (
   actor text not null, staff_id uuid references public.staff_members(id), detail text not null, created_at timestamptz not null default now()
 );
 create table private.backup_snapshots(id uuid primary key default gen_random_uuid(), created_at timestamptz not null default now(), actor_id uuid not null, payload jsonb not null);
+alter table private.backup_snapshots enable row level security;
 create index submissions_staff on public.submissions(staff_id);
 create index documents_staff on public.documents(staff_id);
 create index credits_staff on public.credit_entries(staff_id);

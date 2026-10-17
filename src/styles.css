@@ -3101,6 +3101,184 @@ tbody tr:hover {
     font-size: 12px;
   }
 }
+.access-screen {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+}
+.access-card {
+  width: min(100%, 430px);
+  padding: 36px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.access-card h1 {
+  font-size: 36px;
+  margin: 36px 0 10px;
+}
+.school-name {
+  color: #4e5f4e;
+  margin-bottom: 26px;
+}
+.access-instruction {
+  color: #4e5f4e;
+  font-size: 13px;
+  margin-top: 18px;
+}
+.local-test {
+  margin-top: 26px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.local-test span {
+  display: block;
+  color: #6a542f;
+  font-size: 12px;
+}
+.local-test button,
+.privacy-link {
+  background: none;
+  border: 0;
+  color: var(--green);
+  padding: 10px 0;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.privacy-link {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.simple-shell .sidebar nav {
+  margin-top: 42px;
+}
+.simple-shell .page-content {
+  max-width: 1180px;
+  padding-bottom: 40px;
+}
+.simple-shell .page-header {
+  margin-bottom: 22px;
+}
+.simple-shell .page-header h1 {
+  margin: 0;
+}
+.school-heading {
+  color: #42533f;
+  font-size: 14px;
+}
+.simple-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mobile-signout {
+  display: none;
+}
+.test-indicator {
+  color: #6a542f;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.student-balance {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.student-balance .stat-card > strong {
+  display: block;
+  margin-top: 14px;
+}
+.pending-label {
+  display: block;
+  color: #795328;
+  font-size: 12px;
+  margin-top: 5px;
+}
+.person-document {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.person-document > div:first-child {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.person-document > p {
+  margin: 10px 0;
+}
+.person-document > .button {
+  margin-top: 10px;
+}
+.empty > svg {
+  display: none;
+}
+@media (max-width: 900px) {
+  .simple-shell .page-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 600px) {
+  .access-card {
+    padding: 26px;
+  }
+  .access-card h1 {
+    font-size: 32px;
+    margin-top: 28px;
+  }
+  .simple-shell .topbar {
+    height: auto;
+    min-height: 74px;
+    gap: 12px;
+    padding: 12px 20px;
+  }
+  .school-heading {
+    max-width: 230px;
+    line-height: 1.45;
+    font-size: 12px;
+  }
+  .mobile-signout {
+    display: inline-flex;
+    padding: 8px;
+  }
+  .simple-shell .user-avatar {
+    display: none;
+  }
+  .simple-shell .page-content {
+    padding: 24px 20px 96px;
+  }
+  .simple-shell .page-header {
+    gap: 16px;
+  }
+  .simple-shell .page-header h1 {
+    font-size: 32px;
+  }
+  .simple-actions {
+    width: 100%;
+  }
+  .simple-actions .button {
+    flex: 1;
+    padding-inline: 12px;
+  }
+  .student-balance {
+    gap: 8px;
+  }
+  .student-balance .stat-card {
+    padding: 15px 10px;
+  }
+  .student-balance .stat-card > span {
+    font-size: 12px;
+  }
+  .student-balance .stat-card > strong {
+    font-size: 30px;
+  }
+  .student-balance .stat-card > strong > span {
+    display: block;
+    font-size: 12px;
+    margin: 0;
+  }
+}
 @media print {
   .sidebar,
   .topbar,
