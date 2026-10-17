@@ -10,6 +10,8 @@
     "recovery": "node scripts/recover.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:edge": "deno test --node-modules-dir=auto --allow-env supabase/functions/submit-evidence/index_test.ts",
+    "test:production": "npm run build && node scripts/check-unconfigured-build.mjs",
     "typecheck": "tsc -b"
   },
   "dependencies": {

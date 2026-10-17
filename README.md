@@ -8,20 +8,39 @@ MVP em desenvolvimento para uma escola, com Google Auth, Supabase Postgres/Stora
 
 Requer Node 24 e npm. Instalações reproduzíveis usam o package-lock.json.
 
-```powershell
-npm.cmd ci
-npm.cmd run dev
+```sh
+npm ci
+npm run dev
 ```
 
 Abra o endereço local impresso pelo Vite. Em desenvolvimento, a entrada oferece demonstração de direção e servidor. Dados demonstrativos são fictícios, ficam em memória e desaparecem ao sair/recarregar. Não representam persistência do Supabase.
 
-```powershell
-npm.cmd run build
-npm.cmd run test
-npm.cmd run test:e2e
+```sh
+npm run build
+npm test
+npx playwright install chromium
+npm run test:e2e
 ```
 
-Testes E2E utilizam Microsoft Edge instalado e servidor local. PGlite exercita PostgreSQL/RLS com fixtures de Auth/Storage; **não** é validação do Supabase hospedado. O build de produção bloqueia acesso oficial sem configuração e não oferece demonstração por padrão.
+Testes E2E utilizam o Chromium instalado pelo Playwright e iniciam o servidor local automaticamente. Para usar Microsoft Edge instalado, defina `PLAYWRIGHT_CHANNEL=msedge`. No Windows, `npm.cmd` também pode ser usado. PGlite exercita PostgreSQL/RLS com fixtures de Auth/Storage; **não** é validação do Supabase hospedado. O build de produção bloqueia acesso oficial sem configuração e não oferece demonstração por padrão.
+
+## Integração contínua
+
+O workflow [CI](.github/workflows/ci.yml) roda em cada push, pull request e execução manual pelo GitHub Actions. Usa Node 24 e três verificações independentes:
+
+- Compilação TypeScript/Vite e testes Vitest de regras, backup, recuperação e PostgreSQL/RLS com PGlite.
+- Testes Playwright em desktop e celular, acessibilidade e verificação do build sem configuração de produção. Relatórios, capturas e rastros ficam disponíveis nos artefatos por sete dias.
+- Testes Deno da autenticação e autorização da função de upload, com respostas externas simuladas.
+
+O CI usa dados sintéticos e não precisa de segredos do Supabase ou de login Google. Não executa migrações nem publica o site. Os testes de navegador também desabilitam a conexão ao Supabase no servidor local. Falhas aparecem nos checks do commit e da pull request.
+
+Com Deno 2.9.7 e Chromium instalados, as verificações adicionais podem ser executadas localmente:
+
+```sh
+npm run test:edge
+# Use um ambiente sem VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY e sem demo habilitada.
+npm run test:production
+```
 
 ## Arquitetura
 
