@@ -81,6 +81,29 @@ Próxima ação: concluir Google Cloud/OAuth, configurar chave pública e fronte
 
 ## Continuidade da publicação
 
-Pacote estático configurado para Direct Upload em `.artifacts/portal-saldo-eleitoral-pages.zip` (ignorado pelo Git), sem segredos administrativos. Conta Cloudflare dedicada solicitada pelo responsável. Após atraso inicial de provisionamento, a conta Portal Saldo Eleitoral foi confirmada e selecionada na lista da Cloudflare (5c2ed9db84e2c5460379d9b98122878f). Não repetir criação nem usar a conta CorrigePlus, pois o responsável escolheu separação. Nenhuma publicação foi feita.
+Pacote estático configurado para Direct Upload em `.artifacts/portal-saldo-eleitoral-pages.zip` (ignorado pelo Git), sem segredos administrativos. A primeira conta de recursos foi criada sob um login anterior; o responsável esclareceu que exige identidade independente. O destino correto está na seção seguinte. Nenhuma publicação foi feita nessa primeira conta.
 
-Segundo e-mail Google para ensaio do perfil de servidor ainda não fornecido. Não cadastrar terceiros nem considerar isolamento entre contas, upload/retomada e restauração homologados. Próxima ação: preparar Pages na conta dedicada, conferir origem/retorno e obter aprovação para publicar a prévia. O ensaio do perfil de servidor depende do segundo e-mail.
+O segundo perfil foi posteriormente fornecido e autorizado expressamente. Os resultados atuais estão abaixo; não considerar isolamento completo, retomada ou restauração homologados apenas pelo login de duas contas.
+
+## Identidade Cloudflare independente — correção de escopo
+
+O responsável esclareceu que exige login independente para o PSE, além de uma conta de recursos separada. A sessão anterior foi encerrada. O responsável criou novo usuário Cloudflare exclusivo do portal e confirmou seu e-mail; identidade confirmada no painel e conta correta: `1e880ca98d3e03df5d0291a041cb18d0`. Não vincular pagamento nem conectar recursos de outro projeto.
+
+A conta de recursos `5c2ed9db84e2c5460379d9b98122878f`, criada inicialmente dentro do login anterior, não é destino de publicação. Não recebeu site, arquivos, funções nem dados da aplicação. Permanece um recurso vazio criado nesta sessão; remoção exige confirmar o alvo e autorização de exclusão antes de executar. Não acessar ou modificar a conta/projetos CorrigePlus como parte do desenvolvimento do PSE.
+
+Conta de teste do perfil servidor confirmada pelo responsável e autorizada pelo fluxo real do portal; Google OAuth Testing atualizado para duas contas. Login Google real do servidor concluído. Os endereços usados não são versionados no código. Fixtures em .artifacts/ incluem um PDF válido de três páginas e três PDFs de uma página, todos sintéticos.
+
+## Ensaio hospedado e pacote revisado — 16/10/2026, horário de Brasília
+
+- Dois envios reais pela conta de servidor: um PDF de três páginas (1.417 bytes) e três PDFs de uma página (686 bytes cada). Ambos ficaram pendentes, sem criar crédito. Invocações hospedadas confirmaram sucesso do upload.
+- Download privado do primeiro PDF pelo portal concluído; bytes idênticos ao arquivo sintético original. Esse teste não substitui tentativa de acesso entre dois servidores diferentes.
+- Direção aprovou o primeiro envio com justificativa explícita de teste: saldo de 0 para 2. Segundo envio recebeu solicitação de correção, sem crédito adicional.
+- Direção reservou um dia sintético em 20/11/2026: 1 disponível e 1 reservado. Cancelamento preservou o histórico e devolveu o saldo a 2 disponíveis, sem reserva. Nenhum registro tem validade funcional.
+- Novo login do próprio servidor confirmou 2 dias disponíveis, 0 usufruídos e 0 reservados, com crédito e justificativa de teste no histórico.
+- Corrigida a apresentação de timestamps e o limite de dia para America/Sao_Paulo, preservando datas de calendário. Corrigida unidade de arquivos pequenos, que antes apareciam como 0 MB.
+- Após esses ajustes: 21 testes locais passaram; build passou; 14 testes de navegador passaram em desktop e Pixel 7; checagem do build configurado passou com CSP, título/favicon, Google habilitado e modo de demonstração oculto.
+- Pacote regenerado: 378.780 bytes compactados; SHA-256 `D4838D7CCDC15B0090BABD0675568F35CFF3EBC1FFB9E737A00FCEE6B40724C6`. Pages confirmou 17/17 arquivos carregados, incluindo index.html, favicon, headers, assets e licenças.
+- Projeto Pages `portalsaldoeleitoral` preparado na identidade independente correta. Destino previsto: https://portalsaldoeleitoral.pages.dev. Botão Deploy site ainda não acionado; autorização final solicitada ao responsável.
+- Supabase permanece com origem e Site URL locais até a publicação. Atualizar origem de upload, Site URL e retorno exato ao publicar; conferir login e envio em HTTPS depois.
+
+Pendências para uso oficial: restauração de desastre implementada e ensaiada, testes negativos reais de isolamento entre servidores, bloqueio de conta não autorizada, concorrência e retomada de upload, limpeza/reconciliação de arquivos, configuração Google para produção, diretora definitiva e regras institucionais. A prévia é para homologação com dados sintéticos.

@@ -173,13 +173,22 @@ export async function validateFiles(files: File[]) {
   }
 }
 export function formatDate(value: string, options?: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('pt-BR', options ?? { day: '2-digit', month: 'short' }).format(
-    new Date(`${value.slice(0, 10)}T12:00:00`),
-  );
+  // Calendar dates keep their day; timestamps follow the school's time zone.
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00Z` : value);
+  return new Intl.DateTimeFormat('pt-BR', {
+    ...(options ?? { day: '2-digit', month: 'short' }),
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
 }
 export function today() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const part = (type: string) => parts.find((value) => value.type === type)!.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
 }
 export function initials(name: string) {
   return name
@@ -191,7 +200,9 @@ export function initials(name: string) {
     .toUpperCase();
 }
 export function formatBytes(bytes: number) {
-  return `${(bytes / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`;
+  if (bytes < 1_000) return `${bytes} B`;
+  const divisor = bytes < 1_000_000 ? 1_000 : 1_000_000;
+  return `${(bytes / divisor).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${divisor === 1_000 ? 'KB' : 'MB'}`;
 }
 export function errorMessage(error: unknown) {
   if (error instanceof z.ZodError) return error.issues[0]?.message ?? 'Confira os campos.';

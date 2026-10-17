@@ -1,13 +1,35 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   balance,
   bookingSchema,
   csv,
   dateSchema,
+  formatDate,
+  today,
   validateBooking,
   validateFiles,
 } from '../src/domain';
 import { createDemoRepository } from '../src/demo';
+
+describe('datas da escola', () => {
+  it('mostra timestamps no dia brasileiro e preserva a data de uma folga', () => {
+    const options = { day: '2-digit', month: '2-digit', year: 'numeric' } as const;
+    expect(formatDate('2026-10-17T02:22:00Z', options)).toBe('16/10/2026');
+    expect(formatDate('2026-10-17T03:01:00Z', options)).toBe('17/10/2026');
+    expect(formatDate('2026-10-17', options)).toBe('17/10/2026');
+  });
+  it('usa o mesmo limite de dia do banco mesmo se o navegador estiver em outro fuso', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-10-17T02:59:00Z'));
+      expect(today()).toBe('2026-10-16');
+      vi.setSystemTime(new Date('2026-10-17T03:00:00Z'));
+      expect(today()).toBe('2026-10-17');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
 
 describe('saldo e agendamento', () => {
   it('converte reserva em uso sem descontar duas vezes', async () => {
