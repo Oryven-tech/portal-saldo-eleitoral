@@ -3,40 +3,10 @@ import { readdir, readFile, stat, mkdtemp, writeFile, rm } from 'node:fs/promise
 import { resolve, join, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
-import { emitKeypressEvents } from 'node:readline';
+import { hidden } from './hidden-input.ts';
 import { createClient } from '@supabase/supabase-js';
 import { readBackup } from '../src/backup.ts';
 import { performRecovery, planRecovery } from '../src/recovery.ts';
-
-async function hidden(prompt: string): Promise<string> {
-  if (!process.stdin.isTTY)
-    throw new Error('Use um terminal interativo para informar a frase/chave sem exibi-la.');
-  process.stdout.write(prompt);
-  emitKeypressEvents(process.stdin);
-  const raw = !!process.stdin.isRaw;
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
-  return new Promise((accept, reject) => {
-    let value = '';
-    const finish = (error?: Error) => {
-      process.stdin.off('keypress', keypress);
-      process.stdin.setRawMode(raw);
-      process.stdin.pause();
-      process.stdout.write('\n');
-      if (error) reject(error);
-      else accept(value);
-      value = '';
-    };
-    const keypress = (text: string | undefined, key: { name?: string; ctrl?: boolean }) => {
-      if (key.ctrl && key.name === 'c') return finish(new Error('Operação cancelada.'));
-      if (key.name === 'return' || key.name === 'enter') return finish();
-      if (key.name === 'backspace') value = [...value].slice(0, -1).join('');
-      else if (text && !key.ctrl && !/[\x00-\x1f\x7f]/.test(text)) value += text;
-      if (value.length > 4096) finish(new Error('Entrada acima do limite.'));
-    };
-    process.stdin.on('keypress', keypress);
-  });
-}
 
 async function main() {
   const [mode, folder, target] = process.argv.slice(2);

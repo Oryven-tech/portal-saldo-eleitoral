@@ -12,7 +12,7 @@ Este procedimento reconstrói dados e PDFs em um **novo projeto vazio**. Não é
    npm.cmd run recovery -- inspect "C:\Copias\PSE"
    ```
 
-   A frase é solicitada no terminal sem ser exibida. Não a coloque em argumento, `.env`, mensagem ou repositório. O resumo mostra escola, referência, contagens, volume e envios interrompidos. Uma cópia parcial de servidor, saldo negativo, folgas sobrepostas, crédito sem análise compatível ou arquivos incompletos impedem a recuperação.
+   A frase é solicitada no terminal e aparece somente como asteriscos. Se não aparecer nenhum asterisco ao colar, a entrada não chegou ao programa; use a opção de colar do terminal. Enter sem valor pede novamente a entrada. Espaços e acentos são preservados: cole a frase exata, sem aspas adicionais. Não a coloque em argumento, `.env`, mensagem ou repositório. O resumo mostra escola, referência, contagens, volume e envios interrompidos. Uma cópia parcial de servidor, saldo negativo, folgas sobrepostas, crédito sem análise compatível ou arquivos incompletos impedem a recuperação.
 
 4. Crie um projeto Supabase Free dedicado e vazio, com senha guardada pelo responsável. Confirme as cotas disponíveis antes de começar. Não reutilize o projeto que atende a escola.
 5. Aplique **em ordem** as migrações `202610160001_portal.sql` e `202610170001_recovery.sql`. Não reaplique a migração inicial em banco já existente. Confira RLS e bucket `evidence` privado.
