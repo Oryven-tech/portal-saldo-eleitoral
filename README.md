@@ -2,7 +2,7 @@
 
 MVP em desenvolvimento para uma escola, com Google Auth, Supabase Postgres/Storage privado e prévia no Cloudflare Pages: https://portalsaldoeleitoral.pages.dev.
 
-**Situação atual:** prévia conectada ao Supabase e Google, publicada em conta Cloudflare com login independente do PSE. Login dos dois perfis, upload e download privados, aprovação e reserva/cancelamento passaram com dados sintéticos. Leitura e download cruzados entre dois servidores com Google real foram recusados pela API; conta não autorizada também foi bloqueada. Recuperação assistida implementada e ensaiada em segundo Supabase com dados/PDF sintéticos. Uso oficial ainda não liberado: faltam validação operacional completa da recuperação, concorrência/reconciliação e aceite institucional. Não inserir dados pessoais reais nesta homologação.
+**Situação atual:** prévia conectada ao Supabase e Google, publicada em conta Cloudflare com login independente do PSE. Login dos dois perfis, upload e download privados, aprovação e reserva/cancelamento passaram com dados sintéticos. Leitura e download cruzados entre dois servidores com Google real foram recusados pela API; conta não autorizada também foi bloqueada. Recuperação pelo comando completo ensaiada em segundo Supabase, com registros, saldo e bytes do PDF conferidos. Uso oficial ainda não liberado: faltam volume representativo, liberação de identidades no destino recuperado, concorrência/reconciliação e aceite institucional. Não inserir dados pessoais reais nesta homologação.
 
 ## Executar
 
@@ -85,13 +85,13 @@ O manifesto inclui hashes SHA-256, contagens e associações. A verificação re
 
 Manter duas cópias protegidas, com recuperação separada. Backup de banco não contém PDFs. Exportar tudo a cada alteração pode esgotar egress; planejar frequência conforme o tamanho observado.
 
-**Recuperação assistida implementada para um projeto vazio.** Consulte [RECUPERACAO.md](RECUPERACAO.md): `npm.cmd run recovery -- inspect <pasta>` valida localmente; `apply <pasta> <referencia>` exige confirmação do destino e chave administrativa informada sem exibição no terminal. PDFs são conferidos no destino e os registros são aplicados em uma transação. Servidores ficam com acessos inativos para revisão; papéis, identidades Auth e sessões antigas não são reaplicados. O ensaio hospedado usou painel SQL/Storage e dados sintéticos; o transporte completo do comando com chave administrativa ainda precisa de conferência operacional. No MVP, Drive recebe cópia manual; integração automática está fora desta etapa.
+**Recuperação assistida implementada para um projeto vazio.** Consulte [RECUPERACAO.md](RECUPERACAO.md): `npm.cmd run recovery -- inspect <pasta>` valida localmente; `apply <pasta> <referencia>` exige confirmação do destino e chave administrativa informada sem exibição no terminal. PDFs são conferidos no destino e os registros são aplicados em uma transação. Servidores ficam com acessos inativos para revisão; papéis, identidades Auth e sessões antigas não são reaplicados. O comando completo foi executado pelo responsável no ensaio sintético, seguido de conferência independente do banco e download com bytes idênticos. Volume e liberação dos logins no destino ainda precisam de homologação. No MVP, Drive recebe cópia manual; integração automática está fora desta etapa.
 
 ## Limitações que bloqueiam uso oficial
 
 - Escola e administrador inicial configurados em projeto Free dedicado; política institucional e diretora definitiva ainda pendentes.
 - Google Auth permanece em Testing com três contas. Recusa de conta não autorizada, leitura/download cruzados entre os dois servidores, RPC administrativa por servidor e acesso anônimo foram conferidos na API hospedada. Concorrência, retomada e demais testes adversariais de upload continuam pendentes; estes resultados não encerram toda a matriz de segurança.
-- Recuperação assistida já ensaiada em banco hospedado com PDF idêntico ao original; faltam o ensaio completo do comando administrativo e volume representativo. Reconciliação/limpeza de uploads e correções de usos já concluídos ainda pendentes.
+- Recuperação pelo comando completo ensaiada em banco hospedado com PDF idêntico ao original; faltam volume representativo e conferência dos logins após revisão dos acessos no destino. Reconciliação/limpeza de uploads e correções de usos já concluídos ainda pendentes.
 - Calendário, fracionamento, campos obrigatórios, privacidade/base legal e temporalidade exigem validação institucional.
 - Pausa por pouca atividade é aceita e precisa de responsável por reativação; não há SLA contratado.
 - Testes em navegadores reais adicionais (Safari/iOS) e volume real de até 50 pessoas ainda pendentes.
