@@ -1,8 +1,8 @@
 # Portal Saldo Eleitoral
 
-MVP em desenvolvimento para uma escola, com Google Auth, Supabase Postgres/Storage privado e publicação prevista no Cloudflare Pages.
+MVP em desenvolvimento para uma escola, com Google Auth, Supabase Postgres/Storage privado e prévia no Cloudflare Pages: https://portalsaldoeleitoral.pages.dev.
 
-**Situação atual:** implementação local e demonstração funcional. Nenhum projeto Supabase ou Google foi conectado; nenhum dado real deve ser utilizado. As provas locais não substituem homologação dos serviços reais ou restauração de desastre.
+**Situação atual:** prévia conectada ao Supabase e Google, publicada em conta Cloudflare com login independente do PSE. Login dos dois perfis, upload e download privados, aprovação e reserva/cancelamento passaram com dados sintéticos. Uso oficial ainda não liberado: faltam recuperação de desastre, isolamento completo e aceite institucional. Não inserir dados pessoais reais nesta homologação.
 
 ## Executar
 
@@ -61,7 +61,7 @@ VITE_ENABLE_DEMO=false
 
 8. Testar direção, servidor A, servidor B e conta não autorizada contra o Supabase real; testar APIs diretas e Storage, sem depender da interface.
 9. Medir PDFs representativos, ajustar orçamento/cotas com revisão e testar upload/retomada reais. Limite inicial: três PDFs somando 10 MB e cota acumulada padrão de 10 MB por servidor; complemento pode exigir exceção técnica. Orçamento global da aplicação: 700 MB, separado de quotas do provedor.
-10. Publicar no Cloudflare Pages, build `npm run build`, saída `dist`, ou Direct Upload de build configurado. Criar ambiente de homologação primeiro. O nome `portalsaldoeleitoral.pages.dev` depende de disponibilidade.
+10. Publicar no Cloudflare Pages, build `npm run build`, saída `dist`, ou Direct Upload de build configurado. Usar o projeto de homologação existente `portalsaldoeleitoral`, na conta independente correta; não criar substituto em outra identidade.
 
 Sem essas configurações, o botão oficial permanece indisponível. Não habilitar demonstração no portal oficial. Não misturar preview com escrita na base de produção.
 
@@ -89,8 +89,8 @@ Manter duas cópias protegidas, com recuperação separada. Backup de banco não
 
 ## Limitações que bloqueiam uso oficial
 
-- Escola e administrador inicial configurados em projeto Free dedicado; política institucional, diretora definitiva e publicação ainda pendentes.
-- Google Auth, hook, Edge Function, banco e bucket reais ainda não testados.
+- Escola e administrador inicial configurados em projeto Free dedicado; política institucional e diretora definitiva ainda pendentes.
+- Google Auth permanece em Testing com duas contas. Isolamento negativo entre dois servidores, conta não autorizada, concorrência e retomada ainda precisam de ensaio hospedado; os fluxos positivos reais já passaram.
 - Restauração assistida, reconciliação/limpeza de uploads e correções de usos já concluídos ainda pendentes.
 - Calendário, fracionamento, campos obrigatórios, privacidade/base legal e temporalidade exigem validação institucional.
 - Pausa por pouca atividade é aceita e precisa de responsável por reativação; não há SLA contratado.
@@ -105,6 +105,8 @@ O `PLANO-MVP.md` registra o andamento e os próximos gates. `EVIDENCIAS-MVP.md` 
 ## Estado da integração em 16/10/2026
 
 Projeto dedicado Free em São Paulo (`axdooojqsfmjkwzugdxw`), migração aplicada, bucket privado, bootstrap administrativo confirmado e hook de admissão ativo. E-mail/senha desativado. URL/chave publicável configuradas em .env.local ignorado pelo Git. Google OAuth ativo e primeiro login real da direção confirmado; testes entre servidores e aceite de uso oficial ainda pendentes. Não reaplicar a migração inicial nesse banco. Permissões padrão de novos objetos foram restringidas mesmo tendo sido criado com exposição automática marcada.
+
+Prévia Pages publicada após autorização em https://portalsaldoeleitoral.pages.dev, implantação `0ad2d16a-2a7c-40fa-b4eb-306797291224`. Site URL e PORTAL_ORIGIN apontam para essa origem exata. Login da direção e do servidor, envio e download privado conferidos em HTTPS. Ao desenvolver localmente, não presumir que o upload local está autorizado: alterar a origem hospedada exige planejamento para não interromper a prévia. A lista de retornos não usa curingas.
 
 Interface da direção: Servidores, Folgas e Backup. Gerenciamento de acessos abre na lista; análise documental abre na ficha individual. O favicon e a marca usam `/favicon.svg`, hospedado como arquivo estático no Pages, sem uso do Storage do Supabase.
 

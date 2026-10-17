@@ -409,7 +409,7 @@ Essas pendências não impedem estrutura, modelo proposto e testes sintéticos; 
 | Backup funcional restaurado | Pendente | Pacotes gerados/validados com dados sintéticos; nenhum restore de desastre realizado |
 | Uso oficial | Não liberado | Depende de aceite funcional, segurança, recuperação e regras |
 
-Atualização de 16/10/2026: login Google real dos dois perfis, upload nos dois formatos previstos, download privado com conferência dos bytes, aprovação, solicitação de correção, reserva e cancelamento validados no Supabase dedicado com dados sintéticos. Saldo final do ensaio: 2 disponíveis e 0 reservados. Não encerra o gate de isolamento completo nem recuperação. Pages preparado na conta Cloudflare com login independente do PSE; publicação da prévia aguarda autorização final. Ver EVIDENCIAS-MVP.md para pacote, testes e limitações atuais.
+Atualização de 16/10/2026: login Google real dos dois perfis, upload nos dois formatos previstos, download privado com conferência dos bytes, aprovação, solicitação de correção, reserva e cancelamento validados no Supabase dedicado com dados sintéticos. Saldo final do ensaio: 2 disponíveis e 0 reservados. Não encerra o gate de isolamento completo nem recuperação. Prévia publicada após autorização final em https://portalsaldoeleitoral.pages.dev, na conta Cloudflare com login independente do PSE. Site URL e origem de upload atualizadas; login do servidor, envio e download também passaram em HTTPS. Ver EVIDENCIAS-MVP.md para pacote, testes e limitações atuais.
 
 Ao concluir cada etapa, registrar versão/commit, ambiente, comandos e testes executados, resultado, limitações, rollback e próxima etapa. Não registrar segredos nem dados pessoais reais nas evidências versionadas.
 

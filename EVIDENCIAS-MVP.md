@@ -45,7 +45,7 @@ Nos testes de navegador: direção busca servidor, agenda folga, corrige crédit
 5. Limpeza/reconciliação de uploads abandonados, correções de usos concluídos e troca de identidade precisam de procedimento/código antes da abertura oficial.
 6. Formato/tamanho de PDFs reais e regras institucionais ainda não confirmados.
 7. Ensaio com 50 usuários, Safari/iOS real, rotina de guarda, privacidade e responsáveis pendentes.
-8. Não há hospedagem publicada. Pages é o destino escolhido; Sites hospedado não foi utilizado por essa decisão explícita.
+8. Prévia de homologação publicada no Pages, conforme atualização abaixo. Sites hospedado não foi utilizado por decisão explícita do responsável.
 
 ## Reversão e continuidade
 
@@ -103,7 +103,9 @@ Conta de teste do perfil servidor confirmada pelo responsável e autorizada pelo
 - Corrigida a apresentação de timestamps e o limite de dia para America/Sao_Paulo, preservando datas de calendário. Corrigida unidade de arquivos pequenos, que antes apareciam como 0 MB.
 - Após esses ajustes: 21 testes locais passaram; build passou; 14 testes de navegador passaram em desktop e Pixel 7; checagem do build configurado passou com CSP, título/favicon, Google habilitado e modo de demonstração oculto.
 - Pacote regenerado: 378.780 bytes compactados; SHA-256 `D4838D7CCDC15B0090BABD0675568F35CFF3EBC1FFB9E737A00FCEE6B40724C6`. Pages confirmou 17/17 arquivos carregados, incluindo index.html, favicon, headers, assets e licenças.
-- Projeto Pages `portalsaldoeleitoral` preparado na identidade independente correta. Destino previsto: https://portalsaldoeleitoral.pages.dev. Botão Deploy site ainda não acionado; autorização final solicitada ao responsável.
-- Supabase permanece com origem e Site URL locais até a publicação. Atualizar origem de upload, Site URL e retorno exato ao publicar; conferir login e envio em HTTPS depois.
+- Projeto Pages `portalsaldoeleitoral` publicado após autorização final expressa, na identidade independente correta. URL: https://portalsaldoeleitoral.pages.dev. Implantação `0ad2d16a-2a7c-40fa-b4eb-306797291224`, origem main por Direct Upload. Pacote estático acima; dados e PDFs permanecem no Supabase privado.
+- Supabase Site URL e PORTAL_ORIGIN atualizados para https://portalsaldoeleitoral.pages.dev, sem curingas de redirecionamento. O retorno solicitado pelo frontend corresponde à Site URL. Segredos de autenticação não foram alterados. Origem local deixou de ser autorizada para upload.
+- Login Google do servidor pela URL HTTPS concluído; novo envio sintético de um PDF recebido como pendente, sem crédito automático. Download privado em HTTPS conferido: 1.417 bytes, idêntico ao original. Console sem avisos/erros registrados nesse ensaio. Título e modo de produção conferidos visualmente; favicon e CSP já verificados no pacote idêntico antes da publicação.
+- Login da direção também concluído em HTTPS, mostrando o mesmo saldo e o novo envio pendente. DOM confirmou título exato, favicon `/favicon.svg`, marca carregada e ausência do texto de demonstração. Evidência local: `.artifacts/portal-publicado-direcao.png`. Servidor local encerrado; prévia HTTPS permanece acessível.
 
 Pendências para uso oficial: restauração de desastre implementada e ensaiada, testes negativos reais de isolamento entre servidores, bloqueio de conta não autorizada, concorrência e retomada de upload, limpeza/reconciliação de arquivos, configuração Google para produção, diretora definitiva e regras institucionais. A prévia é para homologação com dados sintéticos.
