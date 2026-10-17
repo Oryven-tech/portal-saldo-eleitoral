@@ -109,3 +109,12 @@ Conta de teste do perfil servidor confirmada pelo responsável e autorizada pelo
 - Login da direção também concluído em HTTPS, mostrando o mesmo saldo e o novo envio pendente. DOM confirmou título exato, favicon `/favicon.svg`, marca carregada e ausência do texto de demonstração. Evidência local: `.artifacts/portal-publicado-direcao.png`. Servidor local encerrado; prévia HTTPS permanece acessível.
 
 Pendências para uso oficial: restauração de desastre implementada e ensaiada, testes negativos reais de isolamento entre servidores, bloqueio de conta não autorizada, concorrência e retomada de upload, limpeza/reconciliação de arquivos, configuração Google para produção, diretora definitiva e regras institucionais. A prévia é para homologação com dados sintéticos.
+
+## Ajuste visual do login — 17/10/2026
+
+- Marca da entrada centralizada em uma linha, com tamanho responsivo; apresentação da marca no painel preservada.
+- Botão alterado para “Entrar com Google”. Removida margem automática do SVG que deslocava ícone e texto para a direita.
+- Opção Servidor/Direção selecionada recebe borda verde de 1 px.
+- Build passou; os dois testes existentes da entrada passaram em desktop/Pixel 7, incluindo responsividade e acessibilidade. Capturas locais inspecionadas. Checagem do build configurado com CSP passou.
+- Pacote Pages atualizado, SHA-256 `C83B201C1852D0074E57B301B43D12DA62624D1C5FDA2FF1686098ECE49CC776`. Atualização apenas do frontend; nenhuma alteração de banco, permissões ou credenciais.
+- Publicação concluída na conta independente e conferida em https://portalsaldoeleitoral.pages.dev. Marca centralizada, título em uma linha e sem overflow; margem do ícone Google igual a 0 px; opção selecionada com borda de 1 px rgb(36, 77, 64). Alternância Servidor/Direção conferida no site. Captura: `.artifacts/login-atualizado-publicado.png`.

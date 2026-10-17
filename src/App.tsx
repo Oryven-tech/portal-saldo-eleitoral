@@ -61,7 +61,7 @@ function Brand() {
     <div className="brand">
       <img src="/favicon.svg" width="40" height="40" alt="" />
       <span>
-        Portal Saldo<span>Eleitoral</span>
+        Portal Saldo <span>Eleitoral</span>
       </span>
     </div>
   );
@@ -264,7 +264,7 @@ function Landing({
         </div>
         <button className="google-button" onClick={login} disabled={!supabase}>
           <GoogleIcon />
-          Continuar com Google
+          Entrar com Google
         </button>
         {!supabase && <p className="setup-note">Acesso em configuração.</p>}
         {error && (

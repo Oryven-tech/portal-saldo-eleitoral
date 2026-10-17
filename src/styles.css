@@ -452,7 +452,7 @@ button {
 .role-switch button[aria-pressed='true'] {
   background: var(--white);
   color: var(--green);
-  border-color: #dce2d5;
+  border-color: var(--green);
   box-shadow: 0 2px 3px #234c4006;
 }
 .role-explanation {
@@ -481,9 +481,8 @@ button {
   font-size: 13px;
   font-weight: 500;
 }
-.google-button svg:last-child {
-  margin-left: auto;
-  color: #56654c;
+.google-button svg {
+  flex-shrink: 0;
 }
 .google-button:hover:not(:disabled) {
   background: #f0f3e9;
@@ -3113,6 +3112,22 @@ tbody tr:hover {
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 10px;
+}
+.access-card .brand {
+  justify-content: center;
+  gap: 8px;
+}
+.access-card .brand img {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+.access-card .brand > span:last-child:not(:first-child) {
+  font-size: clamp(16px, 4.5vw, 20px);
+  white-space: nowrap;
+}
+.access-card .brand > span:last-child > span {
+  display: inline;
 }
 .access-card h1 {
   font-size: 36px;

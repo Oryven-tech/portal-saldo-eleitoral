@@ -56,7 +56,7 @@ try {
   });
   await page.goto(`http://127.0.0.1:${server.address().port}`, { waitUntil: 'networkidle' });
   assert.equal(
-    await page.getByRole('button', { name: 'Continuar com Google' }).isDisabled(),
+    await page.getByRole('button', { name: 'Entrar com Google' }).isDisabled(),
     !configured,
   );
   assert.equal(await page.getByRole('button', { name: /Testar acesso de/ }).count(), 0);
