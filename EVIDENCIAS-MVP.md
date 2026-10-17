@@ -155,3 +155,11 @@ A pedido posterior, a marca da entrada voltou ao alinhamento à esquerda, manten
 - Conferido em https://portalsaldoeleitoral.pages.dev: marca à esquerda em uma linha, botão Google centralizado, borda da opção selecionada e mensagem de recusa visível. Captura `.artifacts/login-recusa-corrigida-publicado.png`. Não houve migração de recuperação, restauração ou troca de credenciais na base da prévia nesta etapa.
 
 Próximas verificações: transporte completo da recuperação com credencial fornecida diretamente pelo responsável no terminal, concorrência/retomada/reconciliação de uploads, correção de folgas usufruídas e troca de identidade. Dados institucionais, diretora definitiva, guarda/reativação e aceite de uso oficial continuam pendentes. O ensaio de isolamento não encerra toda a matriz de segurança do PLANO-MVP.md.
+
+### Preparação do ensaio completo pelo comando
+
+Após confirmação explícita do responsável, foram removidos somente o PDF e os registros sintéticos do projeto `PSE Homologacao` (`fjhvkxxvkarilenfjzsy`). Bootstrap administrativo, esquema, políticas, bucket e backup local preservados. Não houve limpeza no projeto da prévia.
+
+A primeira tentativa de limpeza SQL foi recusada pelas guardas: o painel Storage havia deixado um objeto `.emptyFolderPlaceholder` de zero bytes. Os registros permaneceram intactos nessa tentativa. O marcador foi identificado por consulta e a pasta vazia removida pelo Storage; nenhum `DELETE` direto foi executado em `storage.objects`. A transação guardada foi então concluída, conferindo payload exato do ensaio e IDs previstos. Resultado: 0 servidores, 0 documentos, 1 administrador ativo, 0 usuários Auth; bucket vazio. Captura `.artifacts/recuperacao-destino-vazio-confirmado.png`.
+
+Terminal do Codex aberto no repositório original e painel de chaves do projeto isolado preparado com segredo mascarado. O responsável recebeu o comando `npm.cmd run recovery -- apply .artifacts/recovery-fixture fjhvkxxvkarilenfjzsy` e instrução de informar a chave somente no terminal oculto. A execução completa ainda aguarda esse handoff; destino vazio não equivale a recuperação concluída.

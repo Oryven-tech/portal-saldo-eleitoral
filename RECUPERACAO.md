@@ -36,6 +36,8 @@ O comando segue esta ordem:
 
 Se houver interrupção, execute novamente com **as mesmas partes, frase e destino**. Arquivos já enviados continuam privados e sem vínculo público até a conclusão. Uma aplicação concluída não é repetida. Se o conteúdo for diferente com o mesmo identificador, o destino recusa. Não remover arquivos ou tabelas para contornar uma recusa.
 
+Não crie pastas manualmente no Storage para preparar o comando: o upload estabelece os caminhos. O painel pode criar objetos `.emptyFolderPlaceholder` de zero bytes para conservar pastas vazias. Esses marcadores contam como objetos fora do conjunto validado e impedem a recuperação; ausência visual de PDFs não prova bucket vazio. A limpeza de um ensaio exige conferência pelo painel/API, inclusive desses marcadores, sem apagar metadados de `storage.objects` diretamente por SQL.
+
 ## Conferência e liberação
 
 - Compare contagens, créditos, folgas usadas/reservadas, saldo e amostras dos PDFs com a cópia e os registros administrativos. O retorno do comando não substitui essa conferência.
