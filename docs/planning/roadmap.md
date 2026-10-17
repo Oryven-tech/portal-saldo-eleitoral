@@ -2,7 +2,7 @@
 
 Atualizado em 17/10/2026. Referência de continuidade: este plano e a análise de viabilidade no mesmo diretório.
 
-Estado: prévia publicada no Pages, conectada ao Supabase e Google. Fluxos centrais e isolamento de leitura/download entre dois servidores foram ensaiados em serviços reais com dados sintéticos. Recuperação implementada e ensaiada em segundo Supabase, com aceite operacional parcial. Uso institucional ainda não liberado. Evidências e limitações em EVIDENCIAS-MVP.md.
+Estado: prévia publicada no Pages, conectada ao Supabase e Google. Fluxos centrais e isolamento de leitura/download entre dois servidores foram ensaiados em serviços reais com dados sintéticos. Recuperação implementada e ensaiada em segundo Supabase, com aceite operacional parcial. Uso institucional ainda não liberado. Evidências e limitações em docs/validation/evidence.md.
 
 ## 1. Decisões vigentes
 
@@ -400,7 +400,7 @@ Essas pendências não impedem estrutura, modelo proposto e testes sintéticos; 
 
 | Marco | Estado | Evidência |
 | --- | --- | --- |
-| Análise e arquitetura | Concluído | ANALISE-DE-VIABILIDADE.md; escolha expressa neste chat |
+| Análise e arquitetura | Concluído | docs/planning/viability.md; escolha expressa neste chat |
 | Plano de execução | Concluído | Este arquivo |
 | Etapa 0 | Parcial | Git local, dependências fixadas, fontes licenciadas e regras sintéticas; dados institucionais e amostras reais pendentes |
 | Etapas 1–4 | Implementadas; aceite parcial em serviço real | Google, admissão, leitura/download isolados, envio nos dois formatos e gestão de saldo ensaiados; concorrência, retomada e reconciliação pendentes |
@@ -409,8 +409,8 @@ Essas pendências não impedem estrutura, modelo proposto e testes sintéticos; 
 | Backup funcional restaurado | Ensaio sintético hospedado concluído | Dois servidores, crédito, uso/reserva e PDF de 686 bytes recuperados sem duplicação e sem reativar acessos; validação operacional completa pendente |
 | Uso oficial | Não liberado | Depende de aceite funcional, segurança, recuperação e regras |
 
-Atualização de 16/10/2026: login Google real dos dois perfis, upload nos dois formatos previstos, download privado com conferência dos bytes, aprovação, solicitação de correção, reserva e cancelamento validados no Supabase dedicado com dados sintéticos. Saldo final do ensaio: 2 disponíveis e 0 reservados. Não encerra o gate de isolamento completo nem recuperação. Prévia publicada após autorização final em https://portalsaldoeleitoral.pages.dev, na conta Cloudflare com login independente do PSE. Site URL e origem de upload atualizadas; login do servidor, envio e download também passaram em HTTPS. Ver EVIDENCIAS-MVP.md para pacote, testes e limitações atuais.
+Atualização de 16/10/2026: login Google real dos dois perfis, upload nos dois formatos previstos, download privado com conferência dos bytes, aprovação, solicitação de correção, reserva e cancelamento validados no Supabase dedicado com dados sintéticos. Saldo final do ensaio: 2 disponíveis e 0 reservados. Não encerra o gate de isolamento completo nem recuperação. Prévia publicada após autorização final em https://portalsaldoeleitoral.pages.dev, na conta Cloudflare com login independente do PSE. Site URL e origem de upload atualizadas; login do servidor, envio e download também passaram em HTTPS. Ver docs/validation/evidence.md para pacote, testes e limitações atuais.
 
 Ao concluir cada etapa, registrar versão/commit, ambiente, comandos e testes executados, resultado, limitações, rollback e próxima etapa. Não registrar segredos nem dados pessoais reais nas evidências versionadas.
 
-Continuação de 17/10/2026: recuperação assistida implementada e ensaiada no projeto Free separado `PSE Homologacao`, inclusive transporte completo pelo comando executado pelo responsável. Banco/saldo e bytes do PDF conferidos de forma independente. A base da prévia não foi restaurada nem sobrescrita. Terceira conta Google bloqueada antes da autorização e liberada depois da confirmação do responsável. Leitura/download cruzados entre os dois servidores, RPC administrativa por servidor e acesso anônimo recusados pela API hospedada. Mensagem de recusa OAuth corrigida na entrada. Diretora definitiva e política institucional pendentes. Próximas verificações: concorrência, retomada e reconciliação de uploads, correção de folgas já usufruídas, troca de identidade e recuperação com volume representativo/liberação de logins no destino. Ver RECUPERACAO.md e EVIDENCIAS-MVP.md para limites, comandos e resultados.
+Continuação de 17/10/2026: recuperação assistida implementada e ensaiada no projeto Free separado `PSE Homologacao`, inclusive transporte completo pelo comando executado pelo responsável. Banco/saldo e bytes do PDF conferidos de forma independente. A base da prévia não foi restaurada nem sobrescrita. Terceira conta Google bloqueada antes da autorização e liberada depois da confirmação do responsável. Leitura/download cruzados entre os dois servidores, RPC administrativa por servidor e acesso anônimo recusados pela API hospedada. Mensagem de recusa OAuth corrigida na entrada. Diretora definitiva e política institucional pendentes. Próximas verificações: concorrência, retomada e reconciliação de uploads, correção de folgas já usufruídas, troca de identidade e recuperação com volume representativo/liberação de logins no destino. Ver docs/operations/recovery.md e docs/validation/evidence.md para limites, comandos e resultados.

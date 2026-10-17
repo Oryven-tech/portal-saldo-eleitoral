@@ -10,7 +10,7 @@ const staffUser = '20000000-0000-4000-8000-000000000002';
 const staff = '30000000-0000-4000-8000-000000000001';
 const other = '30000000-0000-4000-8000-000000000002';
 const sql = readFileSync(
-  new URL('../supabase/migrations/202610160001_portal.sql', import.meta.url),
+  new URL('../../supabase/migrations/202610160001_portal.sql', import.meta.url),
   'utf8',
 );
 const act = async (id: string) => {

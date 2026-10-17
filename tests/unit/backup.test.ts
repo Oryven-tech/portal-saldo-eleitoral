@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { createDemoRepository } from '../src/demo';
-import { decryptPart, encryptPart, exportBackup, verifyBackup } from '../src/backup';
+import { createDemoRepository } from '../../src/demo';
+import { decryptPart, encryptPart, exportBackup, verifyBackup } from '../../src/backup';
 
 const password = 'minha frase longa para recuperação';
 it('protege o conteúdo e detecta senha errada e adulteração', async () => {

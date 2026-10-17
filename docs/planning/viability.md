@@ -3,7 +3,7 @@
 Data de referência: 16/10/2026. Horizonte solicitado: até 16/10/2028.
 Estado: análise documental e técnica; nenhum ambiente, conta, bucket ou aplicação foi provisionado.
 
-Decisão posterior do responsável: adotar Cloudflare Pages + Supabase completo e aceitar a possibilidade de pausa por pouca atividade, com procedimento de reativação. O [PLANO-MVP.md](PLANO-MVP.md) passa a ser a referência de execução; as alternativas abaixo permanecem como análise histórica e contingência.
+Decisão posterior do responsável: adotar Cloudflare Pages + Supabase completo e aceitar a possibilidade de pausa por pouca atividade, com procedimento de reativação. O [docs/planning/roadmap.md](roadmap.md) passa a ser a referência de execução; as alternativas abaixo permanecem como análise histórica e contingência.
 
 ## 1. Veredicto
 
@@ -294,4 +294,4 @@ Não há estimativa séria de prazo fechado antes da prova de infraestrutura e d
 - Autoridade institucional sobre guarda, LGPD, prazo de uso e eventual encerramento.
 - Destino, responsável e frequência dos backups; recuperação de contas e troca de gestão.
 
-Decisão vigente: executar a opção A conforme o PLANO-MVP.md. A pausa foi aceita pelo responsável; tamanho real dos PDFs, segurança, restauração e condições da infraestrutura continuam sujeitos a aceite antes dos dados reais. As opções B/C ficam como contingência se surgir incompatibilidade comprovada, sem provisionamento antecipado.
+Decisão vigente: executar a opção A conforme o docs/planning/roadmap.md. A pausa foi aceita pelo responsável; tamanho real dos PDFs, segurança, restauração e condições da infraestrutura continuam sujeitos a aceite antes dos dados reais. As opções B/C ficam como contingência se surgir incompatibilidade comprovada, sem provisionamento antecipado.

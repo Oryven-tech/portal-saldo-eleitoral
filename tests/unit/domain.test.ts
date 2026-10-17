@@ -8,8 +8,8 @@ import {
   today,
   validateBooking,
   validateFiles,
-} from '../src/domain';
-import { createDemoRepository } from '../src/demo';
+} from '../../src/domain';
+import { createDemoRepository } from '../../src/demo';
 
 describe('datas da escola', () => {
   it('mostra timestamps no dia brasileiro e preserva a data de uma folga', () => {

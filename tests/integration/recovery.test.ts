@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
-import { planRecovery, performRecovery, recoveryPath } from '../src/recovery';
-import { exportBackup, readBackup } from '../src/backup';
-import type { Snapshot } from '../src/repository';
+import { planRecovery, performRecovery, recoveryPath } from '../../src/recovery';
+import { exportBackup, readBackup } from '../../src/backup';
+import type { Snapshot } from '../../src/repository';
 
 const uid = (n: number) => `90000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const pdf = new TextEncoder().encode('%PDF-1.7\nDocumento sintético\n%%EOF');
@@ -21,7 +21,9 @@ beforeAll(async () => {
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated; grant select on storage.objects to authenticated;`);
   for (const file of ['202610160001_portal.sql', '202610170001_recovery.sql'])
-    await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
+    await db.exec(
+      readFileSync(new URL(`../../supabase/migrations/${file}`, import.meta.url), 'utf8'),
+    );
 }, 30000);
 beforeEach(async () => {
   source = {
