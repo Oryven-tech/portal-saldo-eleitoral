@@ -1,0 +1,4 @@
+project_id = "portal-saldo-eleitoral"
+
+[functions.submit-evidence]
+verify_jwt = true
