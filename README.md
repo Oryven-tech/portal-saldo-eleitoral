@@ -6,6 +6,12 @@ Desenvolvido com **React, TypeScript, Vite e Supabase**, com autenticação Goog
 
 **Status:** MVP em homologação. O uso oficial depende das validações registradas no [guia técnico](docs/operations/technical-guide.md#limitações-que-bloqueiam-uso-oficial). Os testes automáticos usam dados sintéticos.
 
+## Repositório na Oryven Tech
+
+- [Código e tarefas](https://github.com/Oryven-tech/portal-saldo-eleitoral) — repositório privado.
+- [Verificações de CI](https://github.com/Oryven-tech/portal-saldo-eleitoral/actions/workflows/ci.yml).
+- [Registro da migração](docs/migracao-oryven-tech.md).
+
 ## Começar
 
 Requisitos: Node.js 24 e npm. A versão do Node está indicada em [.nvmrc](.nvmrc).
@@ -66,6 +72,6 @@ tests/
 - [Planejamento do MVP](docs/planning/roadmap.md)
 - [Evidências e limites da homologação](docs/validation/evidence.md)
 - [Como contribuir](.github/CONTRIBUTING.md)
-- [Execuções do CI](https://github.com/williandevbr/portal-saldo-eleitoral/actions)
+- [Execuções do CI](https://github.com/Oryven-tech/portal-saldo-eleitoral/actions)
 
 O [workflow CI](.github/workflows/ci.yml) verifica build, testes de regras e banco, fluxos de navegador, acessibilidade e autenticação do upload a cada push e pull request. Relatórios de navegador ficam disponíveis como artefatos por sete dias.
