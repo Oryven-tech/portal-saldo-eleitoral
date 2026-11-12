@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "build:demo": "node scripts/build-demo.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "recovery": "node scripts/recovery/cli.ts",
+    "recovery": "node scripts/recover.ts",
+    "uploads": "node scripts/uploads.ts",
+    "verify:recovery:volume": "node scripts/verify-recovery-volume.ts",
+    "test:uploads:hosted": "npx --yes deno run --allow-env --allow-net=fjhvkxxvkarilenfjzsy.supabase.co --allow-read --allow-write=.artifacts scripts/verify-uploads.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:edge": "deno test --node-modules-dir=auto --allow-env supabase/functions/submit-evidence/index_test.ts",
-    "test:production": "npm run build && node scripts/verification/check-production-build.mjs",
-    "build:isolation-check": "node scripts/isolation/build.mjs",
+    "test:production": "npm run build && node scripts/check-unconfigured-build.mjs",
     "typecheck": "tsc -b"
   },
   "dependencies": {

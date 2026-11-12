@@ -2,14 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
   workers: 1,
   timeout: 30000,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:5173',
-    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
+    channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -24,14 +21,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: process.platform === 'win32' ? 'npm.cmd run dev' : 'npm run dev',
     url: 'http://127.0.0.1:5173',
-    reuseExistingServer: !process.env.CI,
-    env: {
-      VITE_SUPABASE_URL: '',
-      VITE_SUPABASE_PUBLISHABLE_KEY: '',
-      VITE_ENABLE_DEMO: 'true',
-    },
+    reuseExistingServer: true,
     timeout: 30000,
   },
 });

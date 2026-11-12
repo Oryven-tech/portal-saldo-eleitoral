@@ -56,6 +56,8 @@ export interface Access {
 }
 export interface Audit {
   id: string;
+  // Stable functional identity; older v1 backups omitted this association.
+  staffId?: string | null;
   action: string;
   actor: string;
   createdAt: string;
@@ -86,6 +88,29 @@ export interface BookingInput {
   dates: string[];
   reason: string;
 }
+export interface UsedCorrectionInput {
+  id: string;
+  bookingId: string;
+  dates: string[];
+  reason: string;
+}
+export interface EmailChangeInput {
+  id: string;
+  accessId: string;
+  expectedEmail: string;
+  email: string;
+  reason: string;
+}
+export const STAFF_EMAIL_DOMAIN = 'educacao.mg.gov.br';
+export const staffEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.email().max(254))
+  .refine(
+    (email) => email.endsWith(`@${STAFF_EMAIL_DOMAIN}`),
+    'Use o e-mail individual @educacao.mg.gov.br.',
+  );
 
 export function balance(data: Pick<PortalData, 'credits' | 'bookings'>, staffId?: string) {
   const matches = (item: { staffId: string }) => !staffId || item.staffId === staffId;
@@ -111,6 +136,7 @@ export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((value) => {
+    if (value < '0001-01-01') return false;
     const date = new Date(`${value}T12:00:00Z`);
     return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
   }, 'Data inválida.');
@@ -126,12 +152,43 @@ export const bookingSchema = z.object({
 });
 export const accessSchema = z.object({
   name: z.string().trim().min(3).max(120),
-  email: z
-    .email()
-    .max(254)
-    .transform((s) => s.trim().toLowerCase()),
+  email: staffEmailSchema,
   role: z.enum(['director', 'staff']),
 });
+export const emailChangeSchema = z.object({
+  id: z.uuid(),
+  accessId: z.uuid(),
+  expectedEmail: z.email(),
+  email: staffEmailSchema,
+  reason: z.string().trim().min(10).max(500),
+});
+export const usedCorrectionSchema = z.object({
+  id: z.uuid(),
+  bookingId: z.uuid(),
+  dates: z
+    .array(dateSchema)
+    .max(60)
+    .refine((d) => new Set(d).size === d.length, 'Há datas repetidas.')
+    .refine((d) => d.every((date) => date <= today()), 'Não registre uso de uma folga futura.'),
+  reason: z.string().trim().min(10, 'Explique a correção com pelo menos 10 caracteres.').max(500),
+});
+export function validateUsedCorrection(data: PortalData, input: UsedCorrectionInput) {
+  usedCorrectionSchema.parse(input);
+  const original = data.bookings.find((b) => b.id === input.bookingId && b.status === 'used');
+  if (!original) throw new Error('A folga mudou. Atualize a lista.');
+  if (balance(data, original.staffId).available + original.dates.length < input.dates.length)
+    throw new Error('Saldo disponível insuficiente.');
+  if (
+    data.bookings.some(
+      (b) =>
+        b.id !== original.id &&
+        b.staffId === original.staffId &&
+        b.status !== 'cancelled' &&
+        b.dates.some((d) => input.dates.includes(d)),
+    )
+  )
+    throw new Error('Já existe folga em uma dessas datas.');
+}
 export const evidenceSchema = z.object({
   name: z.string().trim().min(3).max(120),
   registration: z.string().trim().max(60),
@@ -230,22 +287,33 @@ export function csv(data: PortalData) {
 }
 
 const timestamp = z.iso.datetime({ offset: true });
+// PostgreSQL UUID identifiers are opaque 128-bit values, not restricted to RFC
+// version/variant bits. Keep every canonical database ID recoverable.
+export const recordIdSchema = z.guid();
+// PostgreSQL length(text) counts Unicode code points; JS string.length counts
+// UTF-16 units. Backup limits must accept the same text the database accepts.
+const databaseText = (max: number, min = 0) =>
+  z.string().refine((value) => {
+    if (value.length > max * 2) return false;
+    const length = [...value].length;
+    return length >= min && length <= max;
+  }, `Texto deve ter entre ${min} e ${max} caracteres.`);
 export const backupDataSchema: z.ZodType<PortalData> = z
   .object({
-    schoolName: z.string().min(3).max(200),
+    schoolName: databaseText(200, 3),
     user: z.object({
-      name: z.string().max(120),
+      name: databaseText(120),
       email: z.email(),
       role: z.enum(['director', 'staff']),
-      staffId: z.uuid().nullable(),
+      staffId: recordIdSchema.nullable(),
     }),
     staff: z
       .array(
         z.object({
-          id: z.uuid(),
-          name: z.string().min(3).max(120),
+          id: recordIdSchema,
+          name: databaseText(120, 3),
           email: z.email(),
-          registration: z.string().max(60),
+          registration: databaseText(60),
           active: z.boolean(),
         }),
       )
@@ -253,47 +321,47 @@ export const backupDataSchema: z.ZodType<PortalData> = z
     credits: z
       .array(
         z.object({
-          id: z.uuid(),
-          staffId: z.uuid(),
+          id: recordIdSchema,
+          staffId: recordIdSchema,
           days: z
             .number()
             .int()
             .min(-366)
             .max(366)
             .refine((n) => n !== 0),
-          reason: z.string().min(3).max(500),
+          reason: databaseText(500, 3),
           createdAt: timestamp,
-          actor: z.string().max(120),
-          sourceId: z.uuid().nullable(),
+          actor: databaseText(120),
+          sourceId: recordIdSchema.nullable(),
         }),
       )
       .max(20000),
     bookings: z
       .array(
         z.object({
-          id: z.uuid(),
-          staffId: z.uuid(),
+          id: recordIdSchema,
+          staffId: recordIdSchema,
           dates: z
             .array(dateSchema)
             .min(1)
             .max(60)
             .refine((d) => new Set(d).size === d.length),
           status: z.enum(['reserved', 'used', 'cancelled']),
-          reason: z.string().min(3).max(500),
+          reason: databaseText(500, 3),
           createdAt: timestamp,
-          actor: z.string().max(120),
+          actor: databaseText(120),
         }),
       )
       .max(20000),
     submissions: z
       .array(
         z.object({
-          id: z.uuid(),
-          staffId: z.uuid(),
-          activity: z.string().min(3).max(120),
+          id: recordIdSchema,
+          staffId: recordIdSchema,
+          activity: databaseText(120, 3),
           declaredDays: z.number().int().min(1).max(366),
           status: z.enum(['draft', 'pending', 'approved', 'changes_requested']),
-          note: z.string().max(500),
+          note: databaseText(500),
           createdAt: timestamp,
         }),
       )
@@ -301,11 +369,11 @@ export const backupDataSchema: z.ZodType<PortalData> = z
     documents: z
       .array(
         z.object({
-          id: z.uuid(),
-          staffId: z.uuid(),
-          submissionId: z.uuid(),
-          name: z.string().min(1).max(255),
-          path: z.string().min(1).max(300),
+          id: recordIdSchema,
+          staffId: recordIdSchema,
+          submissionId: recordIdSchema,
+          name: databaseText(255, 1),
+          path: databaseText(300, 1),
           size: z.number().int().min(1).max(10000000),
           hash: z.string().regex(/^[a-f0-9]{64}$/),
           createdAt: timestamp,
@@ -315,8 +383,8 @@ export const backupDataSchema: z.ZodType<PortalData> = z
     access: z
       .array(
         z.object({
-          id: z.uuid(),
-          name: z.string().min(3).max(120),
+          id: recordIdSchema,
+          name: databaseText(120, 3),
           email: z.email(),
           role: z.enum(['director', 'staff']),
           active: z.boolean(),
@@ -326,11 +394,12 @@ export const backupDataSchema: z.ZodType<PortalData> = z
     audit: z
       .array(
         z.object({
-          id: z.uuid(),
-          action: z.string().max(200),
-          actor: z.string().max(120),
+          id: recordIdSchema,
+          staffId: recordIdSchema.nullable().optional(),
+          action: databaseText(200),
+          actor: databaseText(120),
           createdAt: timestamp,
-          detail: z.string().max(2000),
+          detail: databaseText(2000),
         }),
       )
       .max(30000),
@@ -359,4 +428,6 @@ export const backupDataSchema: z.ZodType<PortalData> = z
       context.addIssue({ code: 'custom', message: 'Documento sem vínculo consistente.' });
     if (data.credits.some((c) => c.sourceId && submissions.get(c.sourceId) !== c.staffId))
       context.addIssue({ code: 'custom', message: 'Crédito sem origem consistente.' });
+    if (data.audit.some((event) => event.staffId != null && !staff.has(event.staffId)))
+      context.addIssue({ code: 'custom', message: 'Auditoria sem vínculo consistente.' });
   });

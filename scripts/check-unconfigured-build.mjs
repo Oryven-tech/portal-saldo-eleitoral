@@ -6,7 +6,8 @@ import { chromium } from '@playwright/test';
 
 // Default: deliberately unconfigured build. --configured checks a connected build.
 const configured = process.argv.includes('--configured');
-const root = resolve('dist');
+const demo = process.argv.includes('--demo');
+const root = resolve(demo ? '.artifacts/demo-dist' : 'dist');
 const headerText = await readFile(resolve(root, '_headers'), 'utf8');
 const headers = Object.fromEntries(
   headerText
@@ -47,24 +48,44 @@ const server = createServer(async (request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
-  browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+  browser = await chromium.launch({
+    channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined),
+  });
   const page = await browser.newPage();
   const errors = [];
+  const external = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).hostname !== '127.0.0.1') external.push(request.url());
+  });
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
   await page.goto(`http://127.0.0.1:${server.address().port}`, { waitUntil: 'networkidle' });
-  assert.equal(
-    await page.getByRole('button', { name: 'Entrar com Google' }).isDisabled(),
-    !configured,
-  );
+  if (demo) assert.equal(await page.getByRole('button', { name: 'Entrar com Google' }).count(), 0);
+  else
+    assert.equal(
+      await page.getByRole('button', { name: 'Entrar com Google' }).isDisabled(),
+      !configured,
+    );
   assert.equal(await page.getByRole('button', { name: /Testar acesso de/ }).count(), 0);
   assert.deepEqual(errors, []);
   assert.equal(await page.title(), 'Portal Saldo Eleitoral');
   assert.equal(await page.locator('link[rel=icon]').getAttribute('href'), '/favicon.svg');
+  if (demo) {
+    await page.getByRole('button', { name: 'Direção', exact: true }).click();
+    await page.getByRole('button', { name: 'Abrir demonstração', exact: true }).click();
+    await page.getByRole('heading', { name: 'Servidores', exact: true }).waitFor();
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await page.getByRole('heading', { name: 'Demonstração', exact: true }).count(), 1);
+    assert.deepEqual(external, []);
+    assert.deepEqual(errors, []);
+    process.stdout.write(
+      'PASS: demonstração opera com dados locais, reinicia ao recarregar e não acessa serviços externos.\n',
+    );
+  }
   process.stdout.write(
-    `PASS: build ${configured ? 'configurado habilita' : 'sem configuração bloqueia'} login, oculta demonstração e carrega com CSP sem erros.\n`,
+    `PASS: build ${demo ? 'de demonstração isolada' : configured ? 'configurado sem demonstração' : 'sem configuração'} carrega com login e CSP conforme o destino.\n`,
   );
 } finally {
   await browser?.close();

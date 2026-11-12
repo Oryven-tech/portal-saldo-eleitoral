@@ -10,7 +10,7 @@ const staffUser = '20000000-0000-4000-8000-000000000002';
 const staff = '30000000-0000-4000-8000-000000000001';
 const other = '30000000-0000-4000-8000-000000000002';
 const sql = readFileSync(
-  new URL('../../supabase/migrations/202610160001_portal.sql', import.meta.url),
+  new URL('../supabase/migrations/202610160001_portal.sql', import.meta.url),
   'utf8',
 );
 const act = async (id: string) => {
@@ -21,13 +21,20 @@ const act = async (id: string) => {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create role supabase_auth_admin;
-    create schema auth; create table auth.users(id uuid primary key,email text not null,raw_app_meta_data jsonb not null default '{}');
+    create schema auth; create table auth.users(id uuid primary key,email text not null,raw_app_meta_data jsonb not null default '{}',email_confirmed_at timestamptz default now());
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;
     create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,metadata jsonb); alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated; grant select on storage.objects to authenticated;`);
   await db.exec(sql);
+  for (const file of [
+    '202610180001_upload_reconciliation.sql',
+    '202610180002_leave_access.sql',
+    '202610180003_backup_audit.sql',
+    '202610180004_audit_hardening.sql',
+  ])
+    await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }, 30000);
 beforeEach(async () => {
   await db.exec(`reset role; truncate public.staff_members,public.access_allowlist,auth.users,private.backup_snapshots cascade;

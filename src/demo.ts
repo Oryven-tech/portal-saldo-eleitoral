@@ -6,9 +6,12 @@ import {
   validateFiles,
   balance,
   today,
+  validateUsedCorrection,
+  emailChangeSchema,
 } from './domain';
 import type { Repository } from './repository';
 import { SCHOOL_NAME } from './school';
+import { createDemoEvidence, DEMO_EVIDENCE_HASH, DEMO_EVIDENCE_SIZE } from './demo-evidence';
 
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const names = [
@@ -95,7 +98,16 @@ function seed(role: Role): PortalData {
       note: '',
       createdAt: stamp,
     })),
-    documents: [],
+    documents: [1, 3, 6].map((n, i) => ({
+      id: id(400 + i),
+      staffId: id(n),
+      submissionId: id(300 + i),
+      name: 'EXEMPLO-FICTICIO-3-paginas.pdf',
+      path: id(400 + i),
+      size: DEMO_EVIDENCE_SIZE,
+      hash: DEMO_EVIDENCE_HASH,
+      createdAt: stamp,
+    })),
     access: staff.map((s) => ({
       id: s.id,
       name: s.name,
@@ -125,6 +137,9 @@ function seed(role: Role): PortalData {
 export function createDemoRepository(role: Role): Repository {
   const state = seed(role);
   const files = new Map<string, Blob>();
+  const example = createDemoEvidence();
+  for (const document of state.documents) files.set(document.id, example);
+  const operations = new Map<string, string>();
   const admin = () => {
     if (role !== 'director') throw new Error('Ação restrita à direção.');
   };
@@ -153,6 +168,59 @@ export function createDemoRepository(role: Role): Repository {
   return {
     mode: 'demo',
     load,
+    async correctUsed(input) {
+      admin();
+      const signature = JSON.stringify(input);
+      if (operations.has(input.id)) {
+        if (operations.get(input.id) !== signature)
+          throw new Error('Operação repetida com dados diferentes.');
+        return;
+      }
+      validateUsedCorrection(state, input);
+      const original = state.bookings.find((b) => b.id === input.bookingId)!;
+      original.status = 'cancelled';
+      if (input.dates.length)
+        state.bookings.push({
+          id: crypto.randomUUID(),
+          staffId: original.staffId,
+          dates: [...input.dates].sort(),
+          status: 'used',
+          reason: input.reason.trim(),
+          actor: state.user.name,
+          createdAt: new Date().toISOString(),
+        });
+      operations.set(input.id, signature);
+      audit(
+        'Uso de folga corrigido',
+        `Original ${original.id} [${original.dates.join(',')}] estornado. Novas datas [${input.dates.join(',')}]. Motivo: ${input.reason.trim()}`,
+      );
+    },
+    async changeEmail(input) {
+      admin();
+      const parsed = emailChangeSchema.parse(input);
+      const signature = JSON.stringify(parsed);
+      if (operations.has(input.id)) {
+        if (operations.get(input.id) !== signature)
+          throw new Error('Operação repetida com dados diferentes.');
+        return;
+      }
+      const access = state.access.find((a) => a.id === input.accessId && a.role === 'staff');
+      if (!access || access.email !== input.expectedEmail)
+        throw new Error('O acesso mudou. Atualize a lista.');
+      if (
+        access.email === parsed.email ||
+        state.access.some((a) => a.id !== access.id && a.email === parsed.email)
+      )
+        throw new Error('E-mail igual ao atual ou já cadastrado.');
+      const staff = state.staff.find((s) => s.email === access.email)!;
+      staff.email = parsed.email;
+      access.email = parsed.email;
+      operations.set(input.id, signature);
+      audit(
+        'E-mail do servidor alterado',
+        `${input.expectedEmail} → ${parsed.email}. Motivo: ${parsed.reason}. Saldo e documentos preservados.`,
+      );
+    },
     async book(input: BookingInput) {
       admin();
       if (state.bookings.some((b) => b.id === input.id)) return;
@@ -234,15 +302,27 @@ export function createDemoRepository(role: Role): Repository {
     async addAccess(input) {
       admin();
       const entry = accessSchema.parse(input);
+      if (entry.role !== 'staff')
+        throw new Error('Novos gestores exigem configuração técnica explícita.');
       if (state.access.some((a) => a.email === entry.email))
         throw new Error('Este e-mail já está na lista.');
-      state.access.push({ ...entry, id: crypto.randomUUID(), active: true });
+      const staffId = crypto.randomUUID();
+      state.access.push({ ...entry, id: staffId, active: true });
+      state.staff.push({
+        id: staffId,
+        name: entry.name,
+        email: entry.email,
+        registration: '',
+        active: true,
+      });
       audit('Acesso autorizado', entry.name);
     },
     async toggleAccess(accessId, active) {
       admin();
       const entry = state.access.find((a) => a.id === accessId);
       if (!entry) throw new Error('Acesso não encontrado.');
+      if (entry.role !== 'staff') throw new Error('Este acesso exige configuração técnica.');
+      if (entry.active === active) return;
       entry.active = active;
       const person = state.staff.find((s) => s.email === entry.email);
       if (person) person.active = active;
@@ -286,6 +366,13 @@ export function createDemoRepository(role: Role): Repository {
       }
     },
     async download(doc) {
+      if (
+        !state.documents.some(
+          (entry) =>
+            entry.id === doc.id && (role === 'director' || entry.staffId === state.user.staffId),
+        )
+      )
+        throw new Error('Documento não disponível para este acesso.');
       const blob = files.get(doc.id);
       if (!blob) throw new Error('Este exemplo não possui um PDF real anexado.');
       return blob;

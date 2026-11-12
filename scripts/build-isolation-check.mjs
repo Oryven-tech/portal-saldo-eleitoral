@@ -10,12 +10,12 @@ await build({
   build: {
     outDir: output,
     emptyOutDir: true,
-    rolldownOptions: { input: resolve('scripts/isolation/index.html') },
+    rolldownOptions: { input: resolve('scripts/isolation-check.html') },
   },
 });
 await mkdir('dist/assets', { recursive: true });
 await cp(resolve(output, 'assets'), resolve('dist/assets'), { recursive: true });
-await cp(resolve(output, 'scripts/isolation/index.html'), resolve('dist/verificacao-acesso.html'));
+await cp(resolve(output, 'scripts/isolation-check.html'), resolve('dist/verificacao-acesso.html'));
 process.stdout.write(
   'Artefato temporário adicionado: dist/verificacao-acesso.html. Refaça o build normal após o ensaio.\n',
 );

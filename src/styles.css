@@ -58,7 +58,7 @@ p {
 h1,
 h2 {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.2;
 }
 h1 {
@@ -1259,7 +1259,7 @@ tbody tr:hover {
 }
 .empty h3 {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: 600;
   font-size: 22px;
   margin: 11px 0 6px;
   color: #586c4d;
@@ -1646,6 +1646,7 @@ tbody tr:hover {
 }
 .access-row .text-button {
   font-size: 12px;
+  min-height: 40px;
 }
 /* Dialogs and forms */
 .modal {
@@ -1801,7 +1802,7 @@ tbody tr:hover {
 .profile-summary h3 {
   font-family: var(--serif);
   font-size: 27px;
-  font-weight: 400;
+  font-weight: 600;
 }
 .profile-summary p {
   font-size: 12px;
@@ -2065,7 +2066,7 @@ tbody tr:hover {
 .verification-success h3 {
   font-family: var(--serif);
   font-size: 25px;
-  font-weight: 400;
+  font-weight: 600;
   margin: 10px 0;
 }
 .verification-success p {
@@ -3100,6 +3101,9 @@ tbody tr:hover {
     font-size: 12px;
   }
 }
+.access-card .role-switch button {
+  font-size: 14px;
+}
 .access-screen {
   min-height: 100svh;
   display: grid;
@@ -3134,8 +3138,17 @@ tbody tr:hover {
   margin: 36px 0 10px;
 }
 .school-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: #4e5f4e;
   margin-bottom: 26px;
+}
+.school-logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .access-instruction {
   color: #4e5f4e;
@@ -3292,6 +3305,71 @@ tbody tr:hover {
     display: block;
     font-size: 12px;
     margin: 0;
+  }
+}
+/* Increase reading size without changing the existing line boxes or spacing. */
+.sidebar nav .nav-link,
+.ledger-row strong,
+.ledger-row small,
+.tabs button,
+.tabs button span,
+.document-card > p,
+.document-details,
+.booking-title h3,
+.booking-title p,
+.booking-reason,
+.booking-bottom > span {
+  font-size: 13px;
+  line-height: 18.6px;
+}
+.notice {
+  font-size: 13px;
+  line-height: 19.2px;
+}
+@media (max-width: 600px) {
+  .notice,
+  .booking-title p {
+    line-height: 21.6px;
+  }
+}
+@media (max-width: 360px) {
+  .notice,
+  .booking-title p {
+    font-size: 12.5px;
+    letter-spacing: -0.25px;
+  }
+}
+.person-name,
+.table-person .person-name,
+.booking-title .person-name,
+.access-row .person-name,
+.person-link strong {
+  font-size: 14px;
+  line-height: 18.6px;
+}
+.review-person .person-name {
+  font-size: 15px;
+  line-height: 21.7px;
+}
+.profile-summary .person-name {
+  font-size: 28px;
+  line-height: 41.85px;
+}
+.document-card .person-name {
+  font-size: 24px;
+  line-height: 27.6px;
+}
+.person-name-inline {
+  font-size: 13px;
+}
+.field .person-name-field {
+  font-size: 15px;
+  line-height: 21.7px;
+}
+@media (max-width: 600px) {
+  .document-card .person-name {
+    font-size: 27px;
+    line-height: 31.2px;
   }
 }
 @media print {

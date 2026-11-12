@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
 import { hidden } from './hidden-input.ts';
 import { createClient } from '@supabase/supabase-js';
-import { readBackup } from '../../src/backup.ts';
-import { performRecovery, planRecovery } from '../../src/recovery.ts';
+import { readBackup } from '../src/backup.ts';
+import { performRecovery, planRecovery } from '../src/recovery.ts';
 
 async function main() {
   const [mode, folder, target] = process.argv.slice(2);

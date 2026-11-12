@@ -1,16 +1,16 @@
 import { z } from 'zod';
-import { backupDataSchema, balance } from './domain.ts';
+import { backupDataSchema, balance, recordIdSchema } from './domain.ts';
 import type { Snapshot } from './repository.ts';
 
 const envelope = z.object({
-  id: z.uuid(),
+  id: recordIdSchema,
   createdAt: z.iso.datetime({ offset: true }),
   data: backupDataSchema,
 });
 
 export function recoveryPath(snapshotId: string, documentId: string) {
-  z.uuid().parse(snapshotId);
-  z.uuid().parse(documentId);
+  recordIdSchema.parse(snapshotId);
+  recordIdSchema.parse(documentId);
   // Never use file names or paths supplied by the archive as destination paths.
   return `_recovery/${snapshotId.toLowerCase()}/${documentId.toLowerCase()}.pdf`;
 }
@@ -35,7 +35,7 @@ export function planRecovery(input: unknown) {
     if (s.status === 'draft') {
       if (docs.length) fail('Rascunho com documentos concluídos exige reconciliação.');
       drafts.push(s.id);
-    } else if (docs.length < 1 || docs.length > 3) {
+    } else if (docs.length > 3 || (docs.length < 1 && s.status !== 'changes_requested')) {
       fail('Envio concluído sem o conjunto de documentos esperado.');
     }
     if (docs.reduce((n, d) => n + d.size, 0) > 10_000_000) fail('Envio acima de 10 MB.');

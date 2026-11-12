@@ -20,7 +20,15 @@ import {
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { PortalData, Staff, Submission, Role, Booking } from './domain';
+import type {
+  PortalData,
+  Staff,
+  Submission,
+  Role,
+  Booking,
+  Access,
+  EmailChangeInput,
+} from './domain';
 import {
   balance,
   csv,
@@ -32,14 +40,19 @@ import {
   today,
   validateBooking,
   validateFiles,
+  validateUsedCorrection,
+  emailChangeSchema,
+  accessSchema,
 } from './domain';
 import type { Repository } from './repository';
-import { createSupabaseRepository, demoEnabled, supabase } from './repository';
+import { createSupabaseRepository, demoEnabled, demoOnly, supabase } from './repository';
 import { createDemoRepository } from './demo';
 import { exportBackup, saveBlob, verifyBackup } from './backup';
 import type { BackupSummary } from './backup';
 import { SCHOOL_NAME } from './school';
 import { oauthFailure } from './auth-return';
+import { createSessionBinding, createRequestGate, isAccessDenied } from './session';
+import type { PortalConnection } from './session';
 
 type Page = 'overview' | 'documents' | 'calendar' | 'backup';
 const pages: { id: Page; label: string; icon: LucideIcon }[] = [
@@ -151,6 +164,7 @@ function Modal({
       className="modal"
       onCancel={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!busy) close();
       }}
       aria-labelledby={titleId}
@@ -167,7 +181,7 @@ function Modal({
 }
 
 export function App() {
-  const [repo, setRepo] = useState<Repository | null>(null);
+  const [connection, setConnection] = useState<PortalConnection | null>(null);
   const [checking, setChecking] = useState(!!supabase);
   const [authError, setAuthError] = useState(
     () => oauthFailure(window.location.href)?.message ?? '',
@@ -176,32 +190,31 @@ export function App() {
     const failure = oauthFailure(window.location.href);
     if (failure) window.history.replaceState(window.history.state, '', failure.cleanUrl);
     if (!supabase) return;
-    let live = true;
+    const binding = createSessionBinding(() => createSupabaseRepository(supabase!), setConnection);
+    const initial = binding.initial();
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (live) {
-        setRepo(session ? createSupabaseRepository(supabase!) : null);
-        setChecking(false);
-      }
+      if (binding.apply(session)) setChecking(false);
     });
     supabase.auth
       .getSession()
       .then(({ data, error }) => {
-        if (live) {
+        if (initial.current()) {
           if (error) setAuthError('Não foi possível verificar sua sessão. Tente entrar novamente.');
-          setRepo(data.session ? createSupabaseRepository(supabase!) : null);
+          initial.apply(error ? null : data.session);
           setChecking(false);
         }
       })
       .catch(() => {
-        if (live) {
+        if (initial.current()) {
+          initial.apply(null);
           setChecking(false);
           setAuthError('Serviço de acesso indisponível. Tente novamente em instantes.');
         }
       });
     return () => {
-      live = false;
+      binding.close();
       subscription.unsubscribe();
     };
   }, []);
@@ -209,11 +222,17 @@ export function App() {
     if (!supabase) return;
     setChecking(true);
     setAuthError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } },
-    });
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          scopes: 'email profile',
+          queryParams: { prompt: 'select_account' },
+        },
+      });
+      if (error) throw error;
+    } catch {
       setAuthError('Não foi possível iniciar o acesso Google. Tente novamente.');
       setChecking(false);
     }
@@ -226,19 +245,32 @@ export function App() {
         <p>Preparando seu acesso…</p>
       </main>
     );
-  if (repo)
+  if (connection)
     return (
       <Portal
-        key={repo.mode}
-        repo={repo}
+        key={connection.identity}
+        repo={connection.repo}
         exit={async () => {
-          if (repo.mode === 'supabase') await supabase?.auth.signOut();
-          setRepo(null);
+          if (connection.repo.mode === 'supabase') {
+            try {
+              const result = await supabase!.auth.signOut({ scope: 'local' });
+              if (result.error) throw result.error;
+            } catch {
+              throw new Error('Não foi possível encerrar a sessão. Tente novamente.');
+            }
+          }
+          setConnection(null);
         }}
       />
     );
   return (
-    <Landing login={login} error={authError} demo={(role) => setRepo(createDemoRepository(role))} />
+    <Landing
+      login={login}
+      error={authError}
+      demo={(role) =>
+        setConnection({ identity: `demo-${crypto.randomUUID()}`, repo: createDemoRepository(role) })
+      }
+    />
   );
 }
 
@@ -257,8 +289,19 @@ function Landing({
     <main className="access-screen">
       <section className="access-card">
         <Brand />
-        <h1>Entrar</h1>
-        <p className="school-name">{SCHOOL_NAME}</p>
+        <h1>{demoOnly ? 'Demonstração' : 'Entrar'}</h1>
+        <p className="school-name">
+          {!demoOnly && (
+            <img
+              className="school-logo"
+              src="/escola-edson-alves-pereira.jpg"
+              alt=""
+              width="150"
+              height="150"
+            />
+          )}
+          <span>{demoOnly ? 'Dados fictícios, sem conexão com a escola.' : SCHOOL_NAME}</span>
+        </p>
         <div className="role-switch" aria-label="Tipo de acesso">
           <button aria-pressed={role === 'staff'} onClick={() => setRole('staff')}>
             Servidor
@@ -267,18 +310,28 @@ function Landing({
             Direção
           </button>
         </div>
-        <button className="google-button" onClick={login} disabled={!supabase}>
-          <GoogleIcon />
-          Entrar com Google
-        </button>
-        {!supabase && <p className="setup-note">Acesso em configuração.</p>}
+        {demoOnly ? (
+          <button className="google-button" onClick={() => demo(role)}>
+            Abrir demonstração
+          </button>
+        ) : (
+          <button className="google-button" onClick={login} disabled={!supabase}>
+            <GoogleIcon />
+            Entrar com Google
+          </button>
+        )}
+        {!supabase && !demoOnly && <p className="setup-note">Acesso em configuração.</p>}
         {error && (
           <p role="alert" className="form-error">
             {error}
           </p>
         )}
-        <p className="access-instruction">Utilize a conta autorizada pela direção.</p>
-        {demoEnabled && (
+        <p className="access-instruction">
+          {demoOnly
+            ? 'As alterações ficam neste navegador e são apagadas ao recarregar.'
+            : 'Utilize a conta autorizada pela direção.'}
+        </p>
+        {demoEnabled && !demoOnly && (
           <div className="local-test">
             <span>Teste local · dados fictícios</span>
             <button onClick={() => demo(role)}>
@@ -286,9 +339,11 @@ function Landing({
             </button>
           </div>
         )}
-        <button className="privacy-link" onClick={() => setPrivacy(true)}>
-          Privacidade
-        </button>
+        {!demoOnly && (
+          <button className="privacy-link" onClick={() => setPrivacy(true)}>
+            Privacidade
+          </button>
+        )}
       </section>
       {privacy && (
         <Modal title="Privacidade" close={() => setPrivacy(false)}>
@@ -312,7 +367,7 @@ function Landing({
   );
 }
 
-function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
+function Portal({ repo, exit }: { repo: Repository; exit: () => Promise<void> }) {
   const [data, setData] = useState<PortalData | null>(null);
   const [page, setPage] = useState<Page>('overview');
   const [error, setError] = useState('');
@@ -325,26 +380,65 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [access, setAccess] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  const refresh = async () => {
-    setError('');
+  const [requests] = useState(createRequestGate);
+  const principal = useRef('');
+  const clearModals = () => {
+    setBookingStaff(null);
+    setEditingBooking(null);
+    setPerson(null);
+    setReview(null);
+    setEvidence(false);
+    setAccess(false);
+  };
+  const deny = () => {
+    setData(null);
+    setError('Acesso indisponível. Confira a autorização e entre novamente.');
+    clearModals();
+  };
+  const load = async (quiet = false) => {
+    const current = requests.begin();
     try {
-      setData(await repo.load());
-    } catch {
-      setError('Não foi possível carregar os registros. Tente novamente.');
+      const value = await repo.load();
+      if (current()) {
+        const next = `${value.user.role}:${value.user.staffId ?? ''}:${value.user.email}`;
+        if (principal.current && principal.current !== next) {
+          clearModals();
+          setPage('overview');
+        }
+        principal.current = next;
+        setData(value);
+        setError('');
+      }
+    } catch (e) {
+      if (!current()) return;
+      if (isAccessDenied(e)) deny();
+      else if (!quiet) setError('Não foi possível carregar os registros. Tente novamente.');
+      throw e;
     }
   };
+  const refresh = async () => {
+    setError('');
+    await load().catch(() => {});
+  };
   useEffect(() => {
-    let live = true;
-    repo
-      .load()
-      .then((value) => {
-        if (live) setData(value);
-      })
-      .catch(() => {
-        if (live) setError('Acesso indisponível. Confira a autorização ou tente novamente.');
-      });
+    requests.open();
+    void load().catch(() => {});
+    return () => requests.close();
+  }, [repo, requests]);
+  useEffect(() => {
+    if (repo.mode !== 'supabase') return;
+    const check = async () => {
+      if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+      await load(true).catch(() => {});
+    };
+    const timer = window.setInterval(() => void check(), 300000);
+    const focus = () => void check();
+    window.addEventListener('focus', focus);
+    document.addEventListener('visibilitychange', focus);
     return () => {
-      live = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', focus);
+      document.removeEventListener('visibilitychange', focus);
     };
   }, [repo]);
   useEffect(() => {
@@ -360,8 +454,21 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
     setBusy(true);
     try {
       await run();
-      setData(await repo.load());
+      try {
+        await load();
+      } catch (e) {
+        if (isAccessDenied(e)) throw e;
+        setError(
+          'Alteração concluída, mas a tela não foi atualizada. Atualize os registros antes de continuar.',
+        );
+      }
       setToast(message);
+    } catch (e) {
+      if (isAccessDenied(e)) {
+        requests.invalidate();
+        deny();
+      }
+      throw e;
     } finally {
       setBusy(false);
     }
@@ -373,6 +480,9 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
       setToast(errorMessage(e));
     }
   };
+  const leave = () => {
+    void exit().catch((e) => setError(errorMessage(e)));
+  };
   if (!data)
     return (
       <main className="loading-page">
@@ -381,7 +491,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           <>
             <p role="alert">{error}</p>
             <Button onClick={refresh}>Tentar novamente</Button>
-            <button className="text-button" onClick={exit}>
+            <button className="text-button" onClick={leave}>
               Sair
             </button>
           </>
@@ -419,7 +529,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <button className="nav-link" onClick={exit}>
+          <button className="nav-link" onClick={leave}>
             <LogOut size={18} />
             <span>Sair</span>
           </button>
@@ -430,7 +540,7 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           <span className="school-heading">{data.schoolName}</span>
           <div className="topbar-right">
             <span className="role-tag">{director ? 'Direção' : 'Servidor'}</span>
-            <button className="text-button mobile-signout" onClick={exit}>
+            <button className="text-button mobile-signout" onClick={leave}>
               Sair
             </button>
           </div>
@@ -472,7 +582,10 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           </div>
           {error && (
             <p className="form-error" role="alert">
-              {error}
+              {error}{' '}
+              <button className="text-button" onClick={refresh}>
+                Atualizar registros
+              </button>
             </p>
           )}
           {page === 'overview' &&
@@ -538,8 +651,20 @@ function Portal({ repo, exit }: { repo: Repository; exit: () => void }) {
           }}
           save={async (input) => {
             await action(
-              () => (editingBooking ? repo.reschedule(input) : repo.book(input)),
-              'Agendamento salvo.',
+              () =>
+                editingBooking?.status === 'used'
+                  ? repo.correctUsed({
+                      id: input.id,
+                      bookingId: editingBooking.id,
+                      dates: input.dates,
+                      reason: input.reason,
+                    })
+                  : editingBooking
+                    ? repo.reschedule(input)
+                    : repo.book(input),
+              editingBooking?.status === 'used'
+                ? 'Correção registrada com histórico.'
+                : 'Agendamento salvo.',
             );
             setBookingStaff(null);
             setEditingBooking(null);
@@ -680,7 +805,7 @@ function StaffTable({
                 <td>
                   <button className="table-person" onClick={() => openPerson(s)}>
                     <span>
-                      <strong>{s.name}</strong>
+                      <strong className="person-name">{s.name}</strong>
                       <small>{s.registration || 'Matrícula não informada'}</small>
                       {data.submissions.some(
                         (item) => item.staffId === s.id && item.status === 'pending',
@@ -814,7 +939,7 @@ function DocumentsPage({
               </span>
               <Badge status={s.status} />
             </div>
-            <h2>{data.staff.find((p) => p.id === s.staffId)?.name}</h2>
+            <h2 className="person-name">{data.staff.find((p) => p.id === s.staffId)?.name}</h2>
             <p>{s.activity}</p>
             <div className="document-details">
               <span>{s.declaredDays} dias declarados</span>
@@ -994,7 +1119,9 @@ function CalendarPage({
                     {initials(data.staff.find((s) => s.id === b.staffId)?.name ?? 'Servidor')}
                   </span>
                   <div>
-                    <h3>{data.staff.find((s) => s.id === b.staffId)?.name}</h3>
+                    <h3 className="person-name">
+                      {data.staff.find((s) => s.id === b.staffId)?.name}
+                    </h3>
                     <p>
                       {b.dates
                         .map((d) =>
@@ -1031,6 +1158,11 @@ function CalendarPage({
                         Confirmar uso
                       </Button>
                     </div>
+                  )}
+                  {director && b.status === 'used' && (
+                    <button className="text-button" disabled={busy} onClick={() => edit(b)}>
+                      Corrigir uso
+                    </button>
                   )}
                 </div>
               </article>
@@ -1094,23 +1226,42 @@ function BookingModal({
   save: (input: { id: string; staffId: string; dates: string[]; reason: string }) => Promise<void>;
   close: () => void;
 }) {
+  const correcting = existing?.status === 'used';
+  const [reverseAll, setReverseAll] = useState(false);
   const [staffId, setStaffId] = useState(initial);
   const [date, setDate] = useState('');
   const [dates, setDates] = useState<string[]>(existing?.dates ?? []);
-  const [reason, setReason] = useState(existing?.reason ?? 'Folga combinada com a direção');
+  const [reason, setReason] = useState(
+    correcting ? '' : (existing?.reason ?? 'Folga combinada com a direção'),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const operation = useRef(existing?.id ?? crypto.randomUUID());
+  const operation = useRef(!correcting && existing ? existing.id : crypto.randomUUID());
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      const input = { id: operation.current, staffId, dates: [...dates].sort(), reason };
-      validateBooking(
-        existing ? { ...data, bookings: data.bookings.filter((b) => b.id !== existing.id) } : data,
-        input,
-      );
+      const input = {
+        id: operation.current,
+        staffId,
+        dates: reverseAll ? [] : [...dates].sort(),
+        reason,
+      };
+      if (correcting)
+        validateUsedCorrection(data, {
+          id: input.id,
+          bookingId: existing!.id,
+          dates: input.dates,
+          reason,
+        });
+      else
+        validateBooking(
+          existing
+            ? { ...data, bookings: data.bookings.filter((b) => b.id !== existing.id) }
+            : data,
+          input,
+        );
       await save(input);
     } catch (e) {
       setError(errorMessage(e));
@@ -1119,11 +1270,22 @@ function BookingModal({
     }
   };
   return (
-    <Modal title={existing ? 'Editar agendamento' : 'Registrar folga'} close={close} busy={busy}>
+    <Modal
+      title={
+        correcting
+          ? 'Corrigir folga usufruída'
+          : existing
+            ? 'Editar agendamento'
+            : 'Registrar folga'
+      }
+      close={close}
+      busy={busy}
+    >
       <form onSubmit={submit}>
         <label className="field">
           Servidor
           <select
+            className="person-name-field"
             aria-label="Servidor"
             required
             disabled={!!existing}
@@ -1132,7 +1294,7 @@ function BookingModal({
           >
             <option value="">Selecione uma pessoa</option>
             {data.staff
-              .filter((s) => s.active)
+              .filter((s) => s.active || (correcting && s.id === staffId))
               .map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -1140,64 +1302,92 @@ function BookingModal({
               ))}
           </select>
         </label>
-        {staffId && (
+        {staffId && !correcting && (
           <div className="balance-note">
             {balance(data, staffId).available} dias disponíveis para agendar
           </div>
         )}
+        {correcting && (
+          <>
+            <p className="field-hint">
+              Original: {existing!.dates.map((d) => formatDate(d)).join(' · ')}. Informe as datas
+              corretas ou estorne todo o uso.
+            </p>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={reverseAll}
+                onChange={(e) => setReverseAll(e.target.checked)}
+              />
+              Estornar todo este uso
+            </label>
+          </>
+        )}
+        {!reverseAll && (
+          <>
+            <label className="field">
+              Data da folga
+              <div className="date-picker-row">
+                <input
+                  aria-label="Data da folga"
+                  type="date"
+                  max={correcting ? today() : undefined}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  secondary
+                  onClick={() => {
+                    if (date && !dates.includes(date)) setDates([...dates, date]);
+                    setDate('');
+                  }}
+                  disabled={!date}
+                  icon={Plus}
+                >
+                  Adicionar
+                </Button>
+              </div>
+            </label>
+            <p className="field-hint">
+              Adicione cada data que será debitada. A contagem considera dias inteiros.
+            </p>
+            <div className="date-chips">
+              {dates.map((d) => (
+                <button
+                  type="button"
+                  key={d}
+                  onClick={() => setDates(dates.filter((v) => v !== d))}
+                  aria-label={`Remover ${formatDate(d)}`}
+                >
+                  {formatDate(d)}
+                  <X size={13} />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <label className="field">
-          Data da folga
-          <div className="date-picker-row">
-            <input
-              aria-label="Data da folga"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <Button
-              type="button"
-              secondary
-              onClick={() => {
-                if (date && !dates.includes(date)) setDates([...dates, date]);
-                setDate('');
-              }}
-              disabled={!date}
-              icon={Plus}
-            >
-              Adicionar
-            </Button>
-          </div>
-        </label>
-        <p className="field-hint">
-          Adicione cada data que será debitada. A contagem considera dias inteiros.
-        </p>
-        <div className="date-chips">
-          {dates.map((d) => (
-            <button
-              type="button"
-              key={d}
-              onClick={() => setDates(dates.filter((v) => v !== d))}
-              aria-label={`Remover ${formatDate(d)}`}
-            >
-              {formatDate(d)}
-              <X size={13} />
-            </button>
-          ))}
-        </div>
-        <label className="field">
-          Observação
+          {correcting ? 'Motivo da correção' : 'Observação'}
           <textarea
             required
-            minLength={3}
+            minLength={correcting ? 10 : 3}
             maxLength={500}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
         <Notice>
-          O agendamento reserva os dias. A confirmação de uso será feita depois, sem desconto
-          duplicado.
+          {correcting
+            ? `Uso anterior: ${existing!.dates.length} dia(s). Uso corrigido: ${reverseAll ? 0 : dates.length} dia(s). Saldo disponível após salvar: ${balance(data, staffId).available + existing!.dates.length - (reverseAll ? 0 : dates.length)} dia(s). O original e o motivo ficam no histórico.`
+            : 'O agendamento reserva os dias. A confirmação de uso será feita depois, sem desconto duplicado.'}
         </Notice>
+        {correcting && (
+          <label className="checkbox-field">
+            <input type="checkbox" required />
+            Conferi o uso e o saldo após a correção.
+          </label>
+        )}
         {error && (
           <p className="form-error" role="alert">
             {error}
@@ -1207,10 +1397,18 @@ function BookingModal({
           <Button secondary type="button" onClick={close} disabled={busy}>
             Voltar
           </Button>
-          <Button type="submit" disabled={busy || !dates.length} icon={busy ? LoaderCircle : Check}>
+          <Button
+            type="submit"
+            disabled={busy || (!dates.length && !reverseAll)}
+            icon={busy ? LoaderCircle : Check}
+          >
             {busy
               ? 'Registrando…'
-              : `Reservar ${dates.length || ''} ${dates.length === 1 ? 'dia' : 'dias'}`}
+              : correcting
+                ? reverseAll
+                  ? 'Estornar uso'
+                  : 'Salvar correção'
+                : `Reservar ${dates.length || ''} ${dates.length === 1 ? 'dia' : 'dias'}`}
           </Button>
         </div>
       </form>
@@ -1255,7 +1453,9 @@ function ReviewModal({
           {initials(data.staff.find((s) => s.id === item.staffId)?.name ?? 'Servidor')}
         </span>
         <div>
-          <strong>{data.staff.find((s) => s.id === item.staffId)?.name}</strong>
+          <strong className="person-name">
+            {data.staff.find((s) => s.id === item.staffId)?.name}
+          </strong>
           <p>
             {item.activity} · {item.declaredDays} dias declarados
           </p>
@@ -1390,10 +1590,10 @@ function PersonModal({
     </form>
   );
   return (
-    <Modal title="Ficha do servidor" close={close}>
+    <Modal title="Ficha do servidor" close={close} busy={busy}>
       <div className="profile-summary">
         <span className="avatar large">{initials(person.name)}</span>
-        <h3>{person.name}</h3>
+        <h3 className="person-name">{person.name}</h3>
         <p>{person.email}</p>
         <small>{person.registration || 'Matrícula não informada'}</small>
       </div>
@@ -1438,7 +1638,7 @@ function PersonModal({
             <div>
               <strong>{c.reason}</strong>
               <small>
-                {formatDate(c.createdAt)} · {c.actor}
+                {formatDate(c.createdAt)} · <span className="person-name-inline">{c.actor}</span>
               </small>
             </div>
             <strong className="positive">
@@ -1520,6 +1720,7 @@ function EvidenceModal({
           <label className="field">
             Nome completo
             <input
+              className="person-name-field"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -1631,15 +1832,14 @@ function AccessPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [changingEmail, setChangingEmail] = useState<Access | null>(null);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError('');
     try {
-      await action(
-        () => repo.addAccess({ name, email, role: 'staff' }),
-        'E-mail autorizado. O servidor já pode entrar com Google.',
-      );
+      const input = accessSchema.parse({ name, email, role: 'staff' });
+      await action(() => repo.addAccess(input), 'E-mail autorizado no portal.');
       setOpen(false);
       setName('');
       setEmail('');
@@ -1664,15 +1864,20 @@ function AccessPage({
           {data.access.map((a) => (
             <div className="access-row" key={a.id}>
               <div>
-                <strong>{a.name}</strong>
+                <strong className="person-name">{a.name}</strong>
                 <span>{a.email}</span>
               </div>
               <span className={`access-status ${a.active ? '' : 'inactive'}`}>
                 {a.active ? 'Autorizado' : 'Desativado'}
               </span>
+              {a.role === 'staff' && (
+                <button className="text-button" disabled={busy} onClick={() => setChangingEmail(a)}>
+                  Trocar e-mail
+                </button>
+              )}
               <button
                 className="text-button"
-                disabled={a.role === 'director'}
+                disabled={a.role === 'director' || busy}
                 onClick={() => setConfirm(a.id)}
               >
                 {a.active ? 'Desativar' : 'Reativar'}
@@ -1690,6 +1895,7 @@ function AccessPage({
             <label className="field">
               Nome do servidor
               <input
+                className="person-name-field"
                 required
                 minLength={3}
                 maxLength={120}
@@ -1698,10 +1904,11 @@ function AccessPage({
               />
             </label>
             <label className="field">
-              E-mail da conta Google
+              E-mail educacional individual
               <input
                 required
                 type="email"
+                placeholder="nome.sobrenome@educacao.mg.gov.br"
                 maxLength={254}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -1709,8 +1916,8 @@ function AccessPage({
               />
             </label>
             <p className="field-hint">
-              Confirme com a pessoa qual conta será utilizada. Endereços institucionais Google
-              também são aceitos.
+              Use o endereço principal da conta @educacao.mg.gov.br. A pessoa entra pelo Google; não
+              peça senha ou código de verificação.
             </p>
             {error && (
               <p role="alert" className="form-error">
@@ -1729,7 +1936,7 @@ function AccessPage({
         </Modal>
       )}
       {confirm && (
-        <Modal title="Alterar autorização?" close={() => setConfirm(null)}>
+        <Modal title="Alterar autorização?" close={() => setConfirm(null)} busy={busy}>
           <div className="prose">
             <p>
               {data.access.find((a) => a.id === confirm)?.active
@@ -1741,12 +1948,14 @@ function AccessPage({
             </p>
           </div>
           <div className="modal-actions">
-            <Button secondary onClick={() => setConfirm(null)}>
+            <Button secondary disabled={busy} onClick={() => setConfirm(null)}>
               Voltar
             </Button>
             <Button
+              disabled={busy}
               onClick={async () => {
                 const entry = data.access.find((a) => a.id === confirm)!;
+                setBusy(true);
                 try {
                   await action(
                     () => repo.toggleAccess(entry.id, !entry.active),
@@ -1755,6 +1964,8 @@ function AccessPage({
                   setConfirm(null);
                 } catch (e) {
                   notify(errorMessage(e));
+                } finally {
+                  setBusy(false);
                 }
               }}
             >
@@ -1763,7 +1974,108 @@ function AccessPage({
           </div>
         </Modal>
       )}
+      {changingEmail && (
+        <EmailChangeModal
+          entry={changingEmail}
+          close={() => setChangingEmail(null)}
+          save={async (input) => {
+            await action(
+              () => repo.changeEmail(input),
+              'E-mail atualizado. A conta anterior perdeu o acesso.',
+            );
+            setChangingEmail(null);
+          }}
+        />
+      )}
     </>
+  );
+}
+function EmailChangeModal({
+  entry,
+  save,
+  close,
+}: {
+  entry: Access;
+  save: (input: EmailChangeInput) => Promise<void>;
+  close: () => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const operation = useRef(crypto.randomUUID());
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await save(
+        emailChangeSchema.parse({
+          id: operation.current,
+          accessId: entry.id,
+          expectedEmail: entry.email,
+          email,
+          reason,
+        }),
+      );
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title="Trocar e-mail do servidor" close={close} busy={busy}>
+      <form onSubmit={submit}>
+        <p className="field-hint">
+          <span className="person-name-inline">{entry.name}</span> · Atual: {entry.email}
+        </p>
+        <label className="field">
+          Novo e-mail educacional
+          <input
+            required
+            type="email"
+            maxLength={254}
+            autoComplete="off"
+            placeholder="nome.sobrenome@educacao.mg.gov.br"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          Motivo da troca
+          <textarea
+            required
+            minLength={10}
+            maxLength={500}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </label>
+        <Notice>
+          A conta anterior perderá o acesso. Saldo, folgas e documentos permanecem no mesmo
+          cadastro.{' '}
+          {entry.active ? 'O novo endereço ficará autorizado.' : 'O acesso continuará desativado.'}
+        </Notice>
+        <label className="checkbox-field">
+          <input required type="checkbox" />
+          Confirmei que o novo endereço pertence ao mesmo servidor.
+        </label>
+        {error && (
+          <p role="alert" className="form-error">
+            {error}
+          </p>
+        )}
+        <div className="modal-actions">
+          <Button secondary type="button" disabled={busy} onClick={close}>
+            Voltar
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? 'Salvando…' : 'Confirmar troca'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 function BackupPage({

@@ -1,7 +1,7 @@
 import { PassThrough } from 'node:stream';
 import type { ReadStream } from 'node:tty';
 import { expect, it } from 'vitest';
-import { hidden } from '../../scripts/recovery/hidden-input';
+import { hidden } from '../scripts/hidden-input';
 
 function terminal() {
   const input = new PassThrough() as unknown as ReadStream;

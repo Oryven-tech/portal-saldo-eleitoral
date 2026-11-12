@@ -160,10 +160,59 @@ test('acessos autorizados funcionam no menu de celular e desktop', async ({ page
   await page.getByRole('button', { name: 'Autorizar servidor' }).click();
   const modal = page.getByRole('dialog', { name: 'Autorizar servidor', exact: true });
   await modal.getByLabel('Nome do servidor').fill('Servidor de teste');
-  await modal.getByLabel('E-mail da conta Google').fill('teste@example.com');
+  await modal.getByLabel('E-mail educacional individual').fill('teste@educacao.mg.gov.br');
   await modal.getByRole('button', { name: 'Autorizar acesso', exact: true }).click();
   await expect(modal).not.toBeVisible();
-  await expect(page.getByText('teste@example.com')).toBeVisible();
+  await expect(page.getByText('teste@educacao.mg.gov.br')).toBeVisible();
+});
+
+test('direção corrige uso preservando original e troca e-mail com conferência explícita', async ({
+  page,
+}, info) => {
+  await director(page);
+  await navigate(page, 'Folgas');
+  await page.getByRole('button', { name: 'Usufruídas', exact: true }).click();
+  await page.getByRole('button', { name: 'Corrigir uso' }).click();
+  const modal = page.getByRole('dialog', { name: 'Corrigir folga usufruída' });
+  await modal
+    .getByRole('button', { name: /Remover/ })
+    .first()
+    .click();
+  await modal.getByLabel('Motivo da correção').fill('Um dia não foi usufruído após conferência');
+  await modal.getByLabel('Conferi o uso e o saldo após a correção.').check();
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(axe.violations).toEqual([]);
+  await page.screenshot({
+    path: `.artifacts/correcao-uso-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await modal.getByRole('button', { name: 'Salvar correção', exact: true }).click();
+  await expect(modal).not.toBeVisible();
+  await expect(page.getByText('Um dia não foi usufruído após conferência')).toBeVisible();
+  await page.getByRole('button', { name: 'Canceladas', exact: true }).click();
+  await expect(page.getByText('Folgas usufruídas', { exact: true })).toBeVisible();
+  await navigate(page, 'Servidores');
+  await page.getByRole('button', { name: 'Gerenciar acessos', exact: true }).click();
+  await page
+    .locator('.access-row')
+    .filter({ hasText: 'Ana Oliveira' })
+    .getByRole('button', { name: 'Trocar e-mail' })
+    .click();
+  const email = page.getByRole('dialog', { name: 'Trocar e-mail do servidor' });
+  await email.getByLabel('Novo e-mail educacional').fill('ana.oliveira@educacao.mg.gov.br');
+  await email.getByLabel('Motivo da troca').fill('Conta institucional confirmada pela servidora');
+  await email.getByLabel('Confirmei que o novo endereço pertence ao mesmo servidor.').check();
+  const accessAxe = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+    .analyze();
+  expect(accessAxe.violations).toEqual([]);
+  await page.screenshot({
+    path: `.artifacts/troca-email-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await email.getByRole('button', { name: 'Confirmar troca', exact: true }).click();
+  await expect(email).not.toBeVisible();
+  await expect(page.getByText('ana.oliveira@educacao.mg.gov.br', { exact: true })).toBeVisible();
 });
 
 test('direção usa três seções e analisa comprovante dentro da ficha', async ({ page }) => {

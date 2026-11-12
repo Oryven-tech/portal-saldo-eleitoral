@@ -15,13 +15,27 @@ Deno.serve(async (request) => {
     return reply(403, { ok: false, message: 'Origem não autorizada.' });
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (request.method !== 'POST') return reply(405, { ok: false });
+  const deadline = Date.now() + 60_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  const checkDeadline = () => {
+    if (Date.now() >= deadline) throw new Error('Prazo do envio esgotado');
+    controller.signal.throwIfAborted();
+  };
+  const boundedFetch: typeof fetch = (input, init = {}) => {
+    checkDeadline();
+    return fetch(input, {
+      ...init,
+      signal: init.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal,
+    });
+  };
   try {
     const auth = request.headers.get('authorization');
     if (!auth?.startsWith('Bearer ')) return reply(401, { ok: false });
     const url = Deno.env.get('SUPABASE_URL')!;
     const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
     const userClient = createClient(url, anon, {
-      global: { headers: { Authorization: auth } },
+      global: { headers: { Authorization: auth }, fetch: boundedFetch },
       auth: { persistSession: false },
     });
     const {
@@ -32,10 +46,14 @@ Deno.serve(async (request) => {
     if (!request.body) return reply(400, { ok: false });
     // Enforce the real body size; Content-Length alone is not trusted.
     const reader = request.body.getReader();
+    controller.signal.addEventListener('abort', () => void reader.cancel().catch(() => {}), {
+      once: true,
+    });
     const chunks: Uint8Array[] = [];
     let size = 0;
     while (true) {
       const { done, value } = await reader.read();
+      checkDeadline();
       if (done) break;
       size += value.length;
       if (size > 10_100_000) {
@@ -85,27 +103,36 @@ Deno.serve(async (request) => {
       p_days: Number(form.get('days')),
       p_files: metadata,
     });
-    if (error || !Array.isArray(reserved))
+    if (error || !Array.isArray(reserved) || reserved.length !== metadata.length)
       return reply(400, {
         ok: false,
         message: 'Não foi possível reservar o envio. Confira os dados ou procure a direção.',
       });
+    if (
+      reserved.every(
+        (doc) =>
+          doc.status === 'ready' &&
+          ['pending', 'approved', 'changes_requested'].includes(doc.submissionStatus),
+      )
+    )
+      return reply(200, { ok: true });
     const service = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+      global: { fetch: boundedFetch },
       auth: { persistSession: false },
     });
     for (const doc of reserved) {
+      checkDeadline();
       const index = metadata.findIndex(
         (f) => f.hash === doc.hash && f.name === doc.name && f.size === doc.size,
       );
       if (index < 0) return reply(409, { ok: false });
-      const upload = await service.storage
-        .from('evidence')
-        .upload(doc.path, buffers[index], {
-          contentType: 'application/pdf',
-          upsert: false,
-          cacheControl: '0',
-        });
+      const upload = await service.storage.from('evidence').upload(doc.path, buffers[index], {
+        contentType: 'application/pdf',
+        upsert: false,
+        cacheControl: '0',
+      });
       if (upload.error) {
+        checkDeadline();
         // A retry may encounter an already uploaded object: verify it instead of overwriting.
         const existing = await service.storage.from('evidence').download(doc.path);
         if (existing.error || !existing.data || existing.data.size !== doc.size)
@@ -120,6 +147,7 @@ Deno.serve(async (request) => {
         if (actualHash !== doc.hash) throw new Error('Documento incompatível');
       }
     }
+    checkDeadline();
     const finalized = await service.rpc('finalize_submission', { p_id: id, p_actor: user.id });
     if (finalized.error) throw new Error('Finalização indisponível');
     return reply(200, { ok: true });
@@ -129,5 +157,7 @@ Deno.serve(async (request) => {
       message:
         'O envio não foi confirmado. Tente novamente com os mesmos documentos ou procure a direção.',
     });
+  } finally {
+    clearTimeout(timer);
   }
 });

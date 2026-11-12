@@ -139,3 +139,148 @@ Deno.test(
     );
   },
 );
+
+function requestWithPdfs(reverse = false) {
+  const form = new FormData();
+  form.set('id', '10000000-0000-4000-8000-000000000002');
+  form.set('name', 'Synthetic Test');
+  form.set('registration', 'TEST');
+  form.set('activity', 'Synthetic activity');
+  form.set('days', '2');
+  const files = [
+    new File(['%PDF-1.7\nA\n%%EOF'], 'a.pdf'),
+    new File(['%PDF-1.7\nB\n%%EOF'], 'b.pdf'),
+  ];
+  for (const file of reverse ? files.reverse() : files) form.append('files', file);
+  return new Request('https://portal-test.invalid/upload', {
+    method: 'POST',
+    headers: { origin, authorization: 'Bearer synthetic-user-token' },
+    body: form,
+  });
+}
+function fakeIdentity() {
+  return Response.json({
+    id: '10000000-0000-4000-8000-000000000001',
+    aud: 'authenticated',
+    role: 'authenticated',
+    app_metadata: { provider: 'google' },
+    user_metadata: {},
+    created_at: '2026-10-16T00:00:00Z',
+  });
+}
+Deno.test(
+  'partial upload resumes identical bytes in a new order and successful retry avoids Storage egress',
+  async () => {
+    const objects = new Map<string, Uint8Array<ArrayBuffer>>();
+    let partial = true,
+      complete = false,
+      finalized = 0,
+      storageCalls = 0;
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/auth/v1/user') return fakeIdentity();
+      if (path === '/rest/v1/rpc/reserve_submission') {
+        const args = JSON.parse(String(init?.body));
+        return Response.json(
+          args.p_files.map((file: { name: string; size: number; hash: string }) => ({
+            ...file,
+            id: file.name,
+            path: `fixture/${file.name}`,
+            status: complete ? 'ready' : 'pending',
+            submissionStatus: complete ? 'pending' : 'draft',
+          })),
+        );
+      }
+      if (path === '/rest/v1/rpc/finalize_submission') {
+        complete = true;
+        finalized++;
+        return Response.json(null);
+      }
+      storageCalls++;
+      const download = (init?.method ?? 'GET') === 'GET';
+      const name = path.slice(path.lastIndexOf('/') + 1);
+      if (download)
+        return objects.has(name)
+          ? new Response(objects.get(name))
+          : Response.json({ message: 'Object not found' }, { status: 404 });
+      if (partial && name === 'b.pdf')
+        return Response.json({ message: 'Interrupted' }, { status: 400 });
+      if (objects.has(name)) return Response.json({ message: 'Already exists' }, { status: 409 });
+      objects.set(name, new Uint8Array(await new Response(init?.body).arrayBuffer()));
+      return Response.json({ Key: `evidence/fixture/${name}` });
+    }) as typeof fetch;
+    try {
+      equal((await handler(requestWithPdfs())).status, 400);
+      equal([...objects.keys()], ['a.pdf']);
+      equal(finalized, 0);
+      partial = false;
+      equal((await handler(requestWithPdfs(true))).status, 200);
+      equal(objects.size, 2);
+      equal(finalized, 1);
+      const before = storageCalls;
+      equal((await handler(requestWithPdfs())).status, 200);
+      equal(storageCalls, before);
+      equal(finalized, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  },
+);
+Deno.test('existing object with wrong hash never finalizes or overwrites', async () => {
+  let finalized = false,
+    uploads = 0;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    if (path === '/auth/v1/user') return fakeIdentity();
+    if (path === '/rest/v1/rpc/reserve_submission')
+      return Response.json(
+        JSON.parse(String(init?.body)).p_files.map((file: Record<string, unknown>) => ({
+          ...file,
+          path: `fixture/${file.name}`,
+        })),
+      );
+    if (path === '/rest/v1/rpc/finalize_submission') {
+      finalized = true;
+      return Response.json(null);
+    }
+    if ((init?.method ?? 'GET') === 'GET') return new Response('%PDF-1.7\nX\n%%EOF');
+    uploads++;
+    return Response.json({ message: 'Already exists' }, { status: 409 });
+  }) as typeof fetch;
+  try {
+    equal((await handler(requestWithPdfs())).status, 400);
+    equal(uploads, 1);
+    equal(finalized, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+Deno.test('expired request cannot start privileged upload after reservation', async () => {
+  const originalNow = Date.now;
+  const started = originalNow();
+  let expired = false,
+    storage = false;
+  Date.now = () => (expired ? started + 61_000 : started);
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname;
+    if (path === '/auth/v1/user') return fakeIdentity();
+    if (path === '/rest/v1/rpc/reserve_submission') {
+      expired = true;
+      return Response.json(
+        JSON.parse(String(init?.body)).p_files.map((file: Record<string, unknown>) => ({
+          ...file,
+          path: `fixture/${file.name}`,
+        })),
+      );
+    }
+    storage = true;
+    throw new Error('Expired handler reached privileged transport');
+  }) as typeof fetch;
+  try {
+    equal((await handler(requestWithPdfs())).status, 400);
+    equal(storage, false);
+  } finally {
+    Date.now = originalNow;
+    globalThis.fetch = originalFetch;
+  }
+});

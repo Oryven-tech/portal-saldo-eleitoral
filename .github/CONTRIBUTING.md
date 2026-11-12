@@ -14,8 +14,7 @@ A demonstração local usa dados fictícios em memória. A configuração de Sup
 ## Organização
 
 - `src/` contém a interface, as regras de saldo e os adaptadores de dados.
-- `tests/unit/` cobre regras, configuração, backup e entrada protegida do terminal.
-- `tests/integration/` cobre SQL, RLS e recuperação com PGlite.
+- Os arquivos em `tests/` cobrem regras, configuração, backup, SQL, RLS e recuperação com PGlite.
 - `tests/e2e/` cobre os fluxos desktop e celular com Playwright.
 - `supabase/functions/` contém a função de upload e seus testes Deno.
 - `scripts/` agrupa ferramentas de recuperação, isolamento e verificação de build.

@@ -1,6 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PortalData, BookingInput, EvidenceInput, Document, Role } from './domain';
+import type {
+  PortalData,
+  BookingInput,
+  EvidenceInput,
+  Document,
+  Role,
+  UsedCorrectionInput,
+  EmailChangeInput,
+} from './domain';
 import { validateFiles } from './domain';
 import { isPublishableKey } from './config';
 
@@ -14,6 +22,8 @@ export interface Repository {
   load(): Promise<PortalData>;
   book(input: BookingInput): Promise<void>;
   reschedule(input: BookingInput): Promise<void>;
+  correctUsed(input: UsedCorrectionInput): Promise<void>;
+  changeEmail(input: EmailChangeInput): Promise<void>;
   adjust(id: string, staffId: string, days: number, reason: string): Promise<void>;
   changeBooking(id: string, status: 'used' | 'cancelled'): Promise<void>;
   review(id: string, days: number, note: string, approved: boolean): Promise<void>;
@@ -25,9 +35,15 @@ export interface Repository {
 }
 const url = import.meta.env.VITE_SUPABASE_URL?.trim();
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
-export const demoEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === 'true';
+export const demoOnly = import.meta.env.VITE_DEMO_ONLY === 'true';
+export const demoEnabled =
+  demoOnly || import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO === 'true';
 export const supabase: SupabaseClient | null =
-  url && key && isPublishableKey(key) && /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)
+  !demoOnly &&
+  url &&
+  key &&
+  isPublishableKey(key) &&
+  /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)
     ? createClient(url, key, {
         auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true },
       })
@@ -50,6 +66,21 @@ export function createSupabaseRepository(client: SupabaseClient): Repository {
       }),
     reschedule: (input) =>
       rpc('reschedule_booking', { p_id: input.id, p_dates: input.dates, p_reason: input.reason }),
+    correctUsed: (input) =>
+      rpc('correct_used_leave', {
+        p_id: input.id,
+        p_booking_id: input.bookingId,
+        p_dates: input.dates,
+        p_reason: input.reason,
+      }),
+    changeEmail: (input) =>
+      rpc('change_staff_email', {
+        p_id: input.id,
+        p_access_id: input.accessId,
+        p_expected_email: input.expectedEmail,
+        p_email: input.email,
+        p_reason: input.reason,
+      }),
     adjust: (id, staffId, days, reason) =>
       rpc('adjust_credit', { p_id: id, p_staff_id: staffId, p_days: days, p_reason: reason }),
     changeBooking: (id, status) => rpc('change_booking', { p_id: id, p_status: status }),

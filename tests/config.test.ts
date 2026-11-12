@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { isPublishableKey } from '../../src/config';
+import { isPublishableKey } from '../src/config';
 it('não aceita chave secreta nem JWT service_role no frontend', () => {
   const jwt = (role: string) => `header.${btoa(JSON.stringify({ role }))}.signature`;
   expect(isPublishableKey(jwt('anon'))).toBe(true);

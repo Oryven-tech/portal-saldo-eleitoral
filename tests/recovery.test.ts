@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
-import { planRecovery, performRecovery, recoveryPath } from '../../src/recovery';
-import { exportBackup, readBackup } from '../../src/backup';
-import type { Snapshot } from '../../src/repository';
+import { planRecovery, performRecovery, recoveryPath } from '../src/recovery';
+import { exportBackup, readBackup } from '../src/backup';
+import type { Snapshot } from '../src/repository';
 
 const uid = (n: number) => `90000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const pdf = new TextEncoder().encode('%PDF-1.7\nDocumento sintético\n%%EOF');
@@ -13,17 +13,22 @@ let db: PGlite;
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create role supabase_auth_admin;
-    create schema auth; create table auth.users(id uuid primary key,email text not null,raw_app_meta_data jsonb not null default '{}');
+    create schema auth; create table auth.users(id uuid primary key,email text not null,raw_app_meta_data jsonb not null default '{}',email_confirmed_at timestamptz default now());
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;
     create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,metadata jsonb);
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated; grant select on storage.objects to authenticated;`);
-  for (const file of ['202610160001_portal.sql', '202610170001_recovery.sql'])
-    await db.exec(
-      readFileSync(new URL(`../../supabase/migrations/${file}`, import.meta.url), 'utf8'),
-    );
+  for (const file of [
+    '202610160001_portal.sql',
+    '202610170001_recovery.sql',
+    '202610180001_upload_reconciliation.sql',
+    '202610180002_leave_access.sql',
+    '202610180003_backup_audit.sql',
+    '202610180004_audit_hardening.sql',
+  ])
+    await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }, 30000);
 beforeEach(async () => {
   source = {
@@ -118,7 +123,31 @@ beforeEach(async () => {
           active: true,
         },
       ],
-      audit: [],
+      audit: [
+        {
+          id: uid(40),
+          staffId: uid(2),
+          action: 'Ajuste de crédito',
+          actor: 'Direção anterior',
+          createdAt: stamp,
+          detail: 'Motivo sintético de ajuste',
+        },
+        {
+          id: uid(41),
+          staffId: null,
+          action: 'Referência de backup criada',
+          actor: 'Direção anterior',
+          createdAt: stamp,
+          detail: 'Evento geral, sem servidor',
+        },
+        {
+          id: uid(42),
+          action: 'Evento de cópia anterior',
+          actor: 'Direção anterior',
+          createdAt: stamp,
+          detail: 'Cópia antiga sem vínculo exportado',
+        },
+      ],
     },
   };
   await db.exec(`reset role; truncate public.staff_members,public.access_allowlist,auth.users,private.backup_snapshots,private.recovery_runs,storage.objects cascade;
@@ -157,8 +186,38 @@ it('lê cópia criptografada por partes e recupera PDFs sem usar caminhos do arq
   expect(read.summary.documents).toBe(1);
   expect(staged.get(uid(4))).toEqual(pdf);
   expect(planRecovery(read.snapshot).counts.staff).toBe(2);
+  expect(read.snapshot.data.audit[0].staffId).toBe(uid(2));
   expect(recoveryPath(source.id, uid(4))).not.toContain('..');
   expect(() => recoveryPath('../invasao', uid(4))).toThrow();
+});
+it('mantém vínculo de auditoria na restauração e na próxima cópia, sem inventar vínculo antigo', async () => {
+  await object();
+  await restore();
+  expect(
+    (await db.query('select staff_id from public.audit_events where id=$1', [uid(40)])).rows[0],
+  ).toEqual({ staff_id: uid(2) });
+  for (const n of [41, 42])
+    expect(
+      (await db.query('select staff_id from public.audit_events where id=$1', [uid(n)])).rows[0],
+    ).toEqual({ staff_id: null });
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [uid(20)]);
+  await db.exec('set role authenticated');
+  const next = (
+    await db.query<{ snapshot: Snapshot }>('select public.create_backup_snapshot() as snapshot')
+  ).rows[0].snapshot;
+  expect(next.data.audit.find((a) => a.id === uid(40))?.staffId).toBe(uid(2));
+  expect(next.data.audit.find((a) => a.id === uid(42))?.staffId).toBeNull();
+  expect(planRecovery(next).snapshot.data.audit.find((a) => a.id === uid(40))?.staffId).toBe(
+    uid(2),
+  );
+});
+it('recusa evento de auditoria vinculado a servidor ausente, sem restaurar parcialmente', async () => {
+  source.data.audit[0].staffId = uid(99);
+  expect(() => planRecovery(source)).toThrow('Auditoria sem vínculo consistente');
+  await object();
+  await expect(restore()).rejects.toThrow();
+  expect((await db.query('select id from public.staff_members')).rows).toHaveLength(0);
+  expect((await db.query('select id from private.recovery_runs')).rows).toHaveLength(0);
 });
 it('recusa créditos/folgas incoerentes e cópia parcial de servidor antes de transmitir', () => {
   source.data.credits[0].days = 1;
@@ -286,5 +345,23 @@ it('converte rascunho incompleto em correção sem criar crédito ou travar reen
     status: 'changes_requested',
     note: expect.stringContaining('envio interrompido'),
   });
+  expect((await db.query('select * from public.credit_entries')).rows).toHaveLength(1);
+});
+it('preserva histórico de rascunho descartado sem PDF ou crédito no backup', async () => {
+  source.data.submissions.push({
+    id: uid(25),
+    staffId: uid(2),
+    activity: 'Interrompida',
+    declaredDays: 2,
+    status: 'changes_requested',
+    note: 'Envio interrompido descartado: PDF incorreto.',
+    createdAt: stamp,
+  });
+  expect(planRecovery(source).counts.submissions).toBe(2);
+  await object();
+  await restore();
+  expect(
+    (await db.query('select status from public.submissions where id=$1', [uid(25)])).rows[0],
+  ).toEqual({ status: 'changes_requested' });
   expect((await db.query('select * from public.credit_entries')).rows).toHaveLength(1);
 });

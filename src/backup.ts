@@ -2,7 +2,7 @@ import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { z } from 'zod';
 import type { Repository, Snapshot } from './repository';
 import type { Document } from './domain';
-import { backupDataSchema } from './domain.ts';
+import { backupDataSchema, recordIdSchema } from './domain.ts';
 
 const MAGIC = new TextEncoder().encode('PSEBKP01');
 const ITERATIONS = 600_000;
@@ -15,7 +15,7 @@ const digest = async (bytes: Uint8Array<ArrayBuffer>) =>
 const manifestSchema = z.object({
   format: z.literal('portal-saldo-eleitoral'),
   version: z.literal(1),
-  id: z.uuid(),
+  id: recordIdSchema,
   createdAt: z.iso.datetime({ offset: true }),
   part: z.number().int().min(1).max(100),
   parts: z.number().int().min(1).max(100),
@@ -23,7 +23,7 @@ const manifestSchema = z.object({
   documents: z
     .array(
       z.object({
-        id: z.uuid(),
+        id: recordIdSchema,
         name: z.string().max(255),
         size: z.number().int().min(1).max(10_000_000),
         hash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -90,11 +90,11 @@ export function saveBlob(blob: Blob, name: string) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
-function groups(documents: Document[]) {
+export function backupGroups(documents: Document[], dataBytes: number) {
   const chunks: Document[][] = [[]];
-  let size = 0;
+  let size = dataBytes;
   for (const doc of documents) {
-    if (size + doc.size > PART_BYTES && chunks[chunks.length - 1].length) {
+    if (size + doc.size > PART_BYTES && (chunks[chunks.length - 1].length || chunks.length === 1)) {
       chunks.push([]);
       size = 0;
     }
@@ -109,12 +109,18 @@ export async function exportBackup(
   progress: (message: string) => void,
   deliver = saveBlob,
 ) {
-  if (password.length < 16)
-    throw new Error('Use uma frase de recuperação com pelo menos 16 caracteres.');
+  if (password.length < 16 || password.length > 256)
+    throw new Error('Use uma frase de recuperação com 16 a 256 caracteres.');
   progress('Criando referência consistente dos dados…');
-  const snapshot = await repo.snapshot();
-  const chunks = groups(snapshot.data.documents);
+  const original = await repo.snapshot();
+  manifestSchema.pick({ id: true, createdAt: true }).parse(original);
+  const snapshot = { ...original, data: backupDataSchema.parse(original.data) };
   const data = new Uint8Array(strToU8(JSON.stringify(snapshot)));
+  // Large histories can occupy their own first part. Reserve overhead before
+  // downloading any PDFs; a bad/oversized data snapshot must not waste egress.
+  if (data.length > MAX_PART_BYTES - 64_000)
+    throw new Error('Os dados excedem o limite de uma parte do backup. Procure o responsável técnico.');
+  const chunks = backupGroups(snapshot.data.documents, data.length);
   const dataHash = await digest(data);
   for (let i = 0; i < chunks.length; i++) {
     const entries: Record<string, Uint8Array<ArrayBuffer>> = {};

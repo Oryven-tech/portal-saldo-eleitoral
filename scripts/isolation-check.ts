@@ -1,8 +1,8 @@
 // Opt-in test artifact. Never included in the normal production build.
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../../src/repository';
-import type { PortalData } from '../../src/domain';
-import './styles.css';
+import { supabase } from '../src/repository';
+import type { PortalData } from '../src/domain';
+import './isolation-check.css';
 
 type Target = { id: string; name: string; document: PortalData['documents'][number] };
 const key = 'pse-synthetic-isolation-v1';

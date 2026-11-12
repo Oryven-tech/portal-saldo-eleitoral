@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
-import { createDemoRepository } from '../../src/demo';
-import { decryptPart, encryptPart, exportBackup, verifyBackup } from '../../src/backup';
+import { createDemoRepository } from '../src/demo';
+import { backupGroups, decryptPart, encryptPart, exportBackup, verifyBackup } from '../src/backup';
+import type { Document } from '../src/domain';
 
 const password = 'minha frase longa para recuperação';
 it('protege o conteúdo e detecta senha errada e adulteração', async () => {
@@ -40,7 +41,7 @@ it('exporta e valida dados e um PDF, sem aplicar nada ao repositório', async ()
     (blob, name) => files.push(new File([blob], name)),
   );
   const result = await verifyBackup(files, password);
-  expect(result.documents).toBe(1);
+  expect(result.documents).toBe(2);
   expect(result.staff).toBe(1);
   expect(result.snapshotId).toBe(snapshotId);
   expect((await repo.load()).documents).toEqual(data.documents);
@@ -67,11 +68,16 @@ it('aceita timestamps PostgreSQL com offset e recusa vínculos incoerentes', asy
   expect((await verifyBackup(files, password)).staff).toBe(8);
   data.credits[0].staffId = crypto.randomUUID();
   const corrupted: File[] = [];
-  await exportBackup(
-    fixture,
-    password,
-    () => {},
-    (blob, name) => corrupted.push(new File([blob], name)),
-  );
-  await expect(verifyBackup(corrupted, password)).rejects.toThrow('Vínculo de servidor ausente');
+  await expect(exportBackup(fixture,password,()=>{},(blob,name)=>corrupted.push(new File([blob],name)))).rejects.toThrow('Vínculo de servidor ausente');
+  expect(corrupted).toHaveLength(0);
+});
+it('histórico grande ganha parte própria antes de dois PDFs de 10 MB, sem carregar os bytes', () => {
+  const a = { size: 10_000_000 } as Document;
+  const b = { size: 10_000_000 } as Document;
+  expect(backupGroups([a,b],13_000_000)).toEqual([[],[a,b]]);
+  expect(backupGroups([a,b],1000)).toEqual([[a],[b]]);
+  expect(backupGroups([],1000)).toEqual([[]]);
+});
+it('frase acima do limite é recusada antes de consultar o banco', async () => {
+  await expect(exportBackup({snapshot:async()=>{throw new Error('Não deve consultar');}} as never,'x'.repeat(257),()=>{})).rejects.toThrow('16 a 256');
 });
